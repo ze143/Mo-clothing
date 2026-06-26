@@ -1,0 +1,457 @@
+/* ========== الأساسيات ========== */
+:root {
+  --primary-color: #2c3e50;
+  --secondary-color: #e74c3c;
+  --accent-color: #3498db;
+  --success-color: #27ae60;
+  --warning-color: #f39c12;
+  --danger-color: #e74c3c;
+  --light-bg: #f8f9fa;
+  --dark-bg: #2c3e50;
+  --text-color: #2c3e50;
+  --border-radius: 12px;
+  --box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --transition: all 0.3s ease;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", "Tahoma", "Arial", sans-serif;
+  background-color: var(--light-bg);
+  color: var(--text-color);
+  direction: rtl;
+  text-align: right;
+}
+
+/* ========== الشريط الجانبي ========== */
+.sidebar {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  color: white;
+  padding: 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 260px;
+  z-index: 1000;
+  transition: var(--transition);
+  box-shadow: 2px 0 20px rgba(0, 0, 0, 0.3);
+}
+
+.sidebar-brand {
+  padding: 25px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+}
+
+.sidebar-brand h2 {
+  color: #fff;
+  font-weight: 700;
+  margin: 0;
+  font-size: 28px;
+}
+
+.sidebar-brand h2 span {
+  color: var(--secondary-color);
+}
+
+.sidebar-brand small {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  display: block;
+  margin-top: 5px;
+}
+
+.sidebar-menu {
+  padding: 20px 0;
+  list-style: none;
+}
+
+.sidebar-menu li {
+  margin: 5px 15px;
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+}
+
+.sidebar-menu li a {
+  color: rgba(255, 255, 255, 0.7);
+  padding: 12px 20px;
+  display: block;
+  text-decoration: none;
+  border-radius: var(--border-radius);
+  transition: var(--transition);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.sidebar-menu li a i {
+  margin-left: 12px;
+  width: 20px;
+  text-align: center;
+}
+
+.sidebar-menu li a:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.sidebar-menu li.active a {
+  background: var(--secondary-color);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+}
+
+.sidebar-menu li.logout-item {
+  margin-top: 30px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 20px;
+}
+
+.sidebar-menu li.logout-item a {
+  color: var(--danger-color);
+}
+
+/* ========== المحتوى الرئيسي ========== */
+.main-content {
+  margin-right: 260px;
+  padding: 25px;
+  min-height: 100vh;
+}
+
+/* ========== شريط التنقل العلوي ========== */
+.top-navbar {
+  background: white;
+  padding: 15px 25px;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  margin-bottom: 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.top-navbar .user-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.top-navbar .user-info .avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+/* ========== البطاقات ========== */
+.card {
+  border: none;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  transition: var(--transition);
+  margin-bottom: 25px;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.card-header {
+  background: white;
+  border-bottom: 1px solid #eee;
+  padding: 18px 25px;
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.card-body {
+  padding: 25px;
+}
+
+/* ========== بطاقات الإحصائيات ========== */
+.stats-card {
+  background: white;
+  border-radius: var(--border-radius);
+  padding: 20px 25px;
+  box-shadow: var(--box-shadow);
+  transition: var(--transition);
+  border-right: 4px solid var(--primary-color);
+}
+
+.stats-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.stats-card .stats-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-bottom: 15px;
+}
+
+.stats-card .stats-number {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 10px 0 5px;
+}
+
+.stats-card .stats-label {
+  color: #888;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.stats-card.primary {
+  border-right-color: var(--primary-color);
+}
+.stats-card.success {
+  border-right-color: var(--success-color);
+}
+.stats-card.warning {
+  border-right-color: var(--warning-color);
+}
+.stats-card.danger {
+  border-right-color: var(--danger-color);
+}
+
+/* ========== الجداول ========== */
+.table {
+  margin-bottom: 0;
+}
+
+.table thead {
+  background: var(--primary-color);
+  color: white;
+}
+
+.table thead th {
+  padding: 15px 20px;
+  font-weight: 600;
+  border: none;
+}
+
+.table tbody td {
+  padding: 15px 20px;
+  vertical-align: middle;
+}
+
+.table tbody tr:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+/* ========== الأزرار ========== */
+.btn {
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+  background: #1a252f;
+  border-color: #1a252f;
+}
+
+.btn-danger {
+  background: var(--danger-color);
+  border-color: var(--danger-color);
+}
+
+.btn-success {
+  background: var(--success-color);
+  border-color: var(--success-color);
+}
+
+/* ========== النماذج ========== */
+.form-control {
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  padding: 10px 15px;
+  transition: var(--transition);
+}
+
+.form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.1);
+}
+
+.form-label {
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+/* ========== شاشة تسجيل الدخول ========== */
+.login-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.login-container {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  padding: 50px 40px;
+  max-width: 420px;
+  width: 100%;
+}
+
+.login-container .brand {
+  text-align: center;
+  margin-bottom: 35px;
+}
+
+.login-container .brand h1 {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--primary-color);
+}
+
+.login-container .brand h1 span {
+  color: var(--secondary-color);
+}
+
+.login-container .brand p {
+  color: #888;
+  font-size: 16px;
+}
+
+/* ========== التجاوب ========== */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 70px;
+  }
+
+  .sidebar-brand h2,
+  .sidebar-brand small,
+  .sidebar-menu li a span {
+    display: none;
+  }
+
+  .sidebar-menu li a {
+    padding: 12px 15px;
+    text-align: center;
+  }
+
+  .sidebar-menu li a i {
+    margin: 0;
+    font-size: 20px;
+  }
+
+  .main-content {
+    margin-right: 70px;
+    padding: 15px;
+  }
+
+  .top-navbar {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .login-container {
+    padding: 30px 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    width: 0;
+    overflow: hidden;
+  }
+
+  .main-content {
+    margin-right: 0;
+  }
+
+  .stats-card .stats-number {
+    font-size: 22px;
+  }
+}
+
+/* =============================================
+   تنسيق النشاطات
+   ============================================= */
+
+.hover-effect {
+  transition: background-color 0.2s ease;
+}
+
+.hover-effect:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+#recentActivities .badge.rounded-circle {
+  font-size: 14px;
+  line-height: 1;
+}
+
+#recentActivities .badge.rounded-circle i {
+  font-size: 14px;
+}
+
+#recentActivities .border-bottom:last-child {
+  border-bottom: none !important;
+}
+
+/* ألوان النشاطات */
+.bg-success-light {
+  background-color: rgba(39, 174, 96, 0.1);
+  color: #27ae60;
+}
+
+.bg-secondary-light {
+  background-color: rgba(108, 117, 125, 0.1);
+  color: #6c757d;
+}
+
+.bg-primary-light {
+  background-color: rgba(44, 62, 80, 0.1);
+  color: #2c3e50;
+}
+
+.bg-warning-light {
+  background-color: rgba(243, 156, 18, 0.1);
+  color: #f39c12;
+}
+
+.bg-info-light {
+  background-color: rgba(52, 152, 219, 0.1);
+  color: #3498db;
+}
+
+.bg-dark-light {
+  background-color: rgba(44, 62, 80, 0.1);
+  color: #2c3e50;
+}
+
+.bg-danger-light {
+  background-color: rgba(231, 76, 60, 0.1);
+  color: #e74c3c;
+}

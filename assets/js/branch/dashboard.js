@@ -1,0 +1,360 @@
+// متغيرات عامة
+let currentBranchId = null;
+let currentBranchName = "";
+let todaySales = [];
+let todayDate = new Date().toISOString().split("T")[0];
+
+// تهيئة الصفحة
+document.addEventListener("DOMContentLoaded", async function () {
+  const user = await checkAuthAndRedirect();
+  if (!user) return;
+
+  // التحقق من صلاحيات الفرع
+  if (user.profile.role !== "branch_user") {
+    alert("غير مصرح لك بالوصول إلى هذه الصفحة");
+    window.location.href = "/pages/login.html";
+    return;
+  }
+
+  currentBranchId = user.profile.branch_id;
+
+  // عرض معلومات المستخدم
+  const avatar = document.getElementById("userAvatar");
+  const userName = document.getElementById("userName");
+  const branchName = document.getElementById("branchName");
+
+  avatar.textContent = user.profile.full_name
+    ? user.profile.full_name.charAt(0).toUpperCase()
+    : "B";
+  userName.textContent = user.profile.full_name || "موظف فرع";
+
+  // الحصول على اسم الفرع
+  await loadBranchInfo();
+
+  // تحميل المنتجات
+  await loadProducts();
+
+  // تحميل مبيعات اليوم
+  await loadTodaySales();
+
+  // تحميل مخزون الفرع
+  await loadBranchStock();
+
+  // تحديث الإحصائيات
+  await updateStatistics();
+
+  // التعامل مع نموذج إضافة مبيعات
+  document
+    .getElementById("dailySalesForm")
+    .addEventListener("submit", handleAddSale);
+});
+
+// تحميل معلومات الفرع
+async function loadBranchInfo() {
+  try {
+    const { data, error } = await supabaseClient
+      .from("branches")
+      .select("name")
+      .eq("id", currentBranchId)
+      .single();
+
+    if (error) throw error;
+
+    currentBranchName = data.name;
+    document.getElementById("branchName").textContent = data.name;
+  } catch (error) {
+    console.error("Error loading branch info:", error);
+  }
+}
+
+// تحميل المنتجات
+async function loadProducts() {
+  try {
+    const { data, error } = await supabaseClient
+      .from("products")
+      .select("*")
+      .order("name");
+
+    if (error) throw error;
+
+    const select = document.getElementById("salesProduct");
+    select.innerHTML = '<option value="">اختر المنتج</option>';
+    data.forEach((product) => {
+      select.innerHTML += `<option value="${product.id}" data-price="${product.price}">${product.name}</option>`;
+    });
+
+    // إضافة حدث تغيير السعر
+    select.addEventListener("change", function () {
+      const priceInput = document.getElementById("salesPrice");
+      if (this.value) {
+        const selected = this.options[this.selectedIndex];
+        priceInput.value = selected.dataset.price;
+      } else {
+        priceInput.value = "";
+      }
+    });
+  } catch (error) {
+    console.error("Error loading products:", error);
+    showError("فشل تحميل المنتجات");
+  }
+}
+
+// تحميل مبيعات اليوم
+async function loadTodaySales() {
+  try {
+    const { data, error } = await supabaseClient
+      .from("daily_sales")
+      .select(
+        `
+                *,
+                products(name, price)
+            `,
+      )
+      .eq("branch_id", currentBranchId)
+      .eq("sale_date", todayDate)
+      .eq("is_closed", false);
+
+    if (error) throw error;
+
+    todaySales = data || [];
+    displayTodaySales();
+  } catch (error) {
+    console.error("Error loading today sales:", error);
+    showError("فشل تحميل مبيعات اليوم");
+  }
+}
+
+// عرض مبيعات اليوم
+function displayTodaySales() {
+  const tbody = document.getElementById("todaySalesBody");
+  const totalElement = document.getElementById("todayTotal");
+
+  if (todaySales.length === 0) {
+    tbody.innerHTML =
+      '<tr><td colspan="5" class="text-center text-muted">لا توجد مبيعات اليوم</td></tr>';
+    totalElement.textContent = "0";
+    return;
+  }
+
+  let total = 0;
+  tbody.innerHTML = todaySales
+    .map((sale) => {
+      const subtotal = sale.quantity * sale.products.price;
+      total += subtotal;
+      return `
+            <tr>
+                <td>${sale.products.name}</td>
+                <td>${sale.quantity}</td>
+                <td>${formatCurrency(sale.products.price)}</td>
+                <td>${formatCurrency(subtotal)}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="deleteSale('${sale.id}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    })
+    .join("");
+
+  totalElement.textContent = formatCurrency(total);
+}
+
+// إضافة مبيعات جديدة
+async function handleAddSale(e) {
+  e.preventDefault();
+
+  const productId = document.getElementById("salesProduct").value;
+  const quantity = parseInt(document.getElementById("salesQuantity").value);
+  const price = parseFloat(document.getElementById("salesPrice").value);
+
+  if (!productId || !quantity || quantity < 1) {
+    showSalesMessage("يرجى اختيار المنتج وإدخال كمية صحيحة", "danger");
+    return;
+  }
+
+  try {
+    // التحقق من وجود المنتج في مخزون الفرع
+    const { data: stockData, error: stockError } = await supabaseClient
+      .from("branch_stock")
+      .select("quantity")
+      .eq("branch_id", currentBranchId)
+      .eq("product_id", productId)
+      .single();
+
+    if (stockError && stockError.code !== "PGRST116") {
+      throw stockError;
+    }
+
+    const currentStock = stockData?.quantity || 0;
+    if (quantity > currentStock) {
+      showSalesMessage(
+        `الكمية المطلوبة (${quantity}) تتجاوز المخزون المتاح (${currentStock})`,
+        "danger",
+      );
+      return;
+    }
+
+    // إضافة المبيعات
+    const { data, error } = await supabaseClient
+      .from("daily_sales")
+      .insert({
+        branch_id: currentBranchId,
+        product_id: productId,
+        quantity: quantity,
+        sale_date: todayDate,
+      })
+      .select();
+
+    if (error) throw error;
+
+    // تحديث مخزون الفرع
+    await supabaseClient
+      .from("branch_stock")
+      .update({ quantity: currentStock - quantity })
+      .eq("branch_id", currentBranchId)
+      .eq("product_id", productId);
+
+    // إعادة تحميل البيانات
+    await loadTodaySales();
+    await loadBranchStock();
+    await updateStatistics();
+
+    // إعادة تعيين النموذج
+    document.getElementById("dailySalesForm").reset();
+    document.getElementById("salesPrice").value = "";
+
+    showSalesMessage("تم إضافة المبيعات بنجاح", "success");
+  } catch (error) {
+    console.error("Error adding sale:", error);
+    showSalesMessage("فشل إضافة المبيعات: " + error.message, "danger");
+  }
+}
+
+// حذف مبيعات
+async function deleteSale(saleId) {
+  if (!confirm("هل أنت متأكد من حذف هذه المبيعات؟")) return;
+
+  try {
+    // الحصول على بيانات المبيعات قبل الحذف
+    const { data: saleData, error: fetchError } = await supabaseClient
+      .from("daily_sales")
+      .select("product_id, quantity")
+      .eq("id", saleId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // حذف المبيعات
+    const { error: deleteError } = await supabaseClient
+      .from("daily_sales")
+      .delete()
+      .eq("id", saleId);
+
+    if (deleteError) throw deleteError;
+
+    // إعادة الكمية إلى مخزون الفرع
+    const { data: stockData, error: stockError } = await supabaseClient
+      .from("branch_stock")
+      .select("quantity")
+      .eq("branch_id", currentBranchId)
+      .eq("product_id", saleData.product_id)
+      .single();
+
+    if (!stockError) {
+      await supabaseClient
+        .from("branch_stock")
+        .update({ quantity: (stockData.quantity || 0) + saleData.quantity })
+        .eq("branch_id", currentBranchId)
+        .eq("product_id", saleData.product_id);
+    }
+
+    // إعادة تحميل البيانات
+    await loadTodaySales();
+    await loadBranchStock();
+    await updateStatistics();
+
+    showSalesMessage("تم حذف المبيعات بنجاح", "success");
+  } catch (error) {
+    console.error("Error deleting sale:", error);
+    showSalesMessage("فشل حذف المبيعات", "danger");
+  }
+}
+
+// تحميل مخزون الفرع
+async function loadBranchStock() {
+  try {
+    const { data, error } = await supabaseClient
+      .from("branch_stock")
+      .select(
+        `
+                *,
+                products(name)
+            `,
+      )
+      .eq("branch_id", currentBranchId);
+
+    if (error) throw error;
+
+    const tbody = document.getElementById("branchStockBody");
+    if (data.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="2" class="text-center text-muted">لا توجد منتجات في المخزون</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = data
+      .map(
+        (item) => `
+            <tr>
+                <td>${item.products.name}</td>
+                <td>${item.quantity}</td>
+            </tr>
+        `,
+      )
+      .join("");
+  } catch (error) {
+    console.error("Error loading branch stock:", error);
+  }
+}
+
+async function updateStatistics() {
+  try {
+    const todayTotal = todaySales.reduce(
+      (sum, sale) => sum + sale.quantity * sale.products.price,
+      0,
+    );
+    document.getElementById("branchTodaySales").textContent =
+      formatCurrency(todayTotal);
+
+    const { data: stockData, error: stockError } = await supabaseClient
+      .from("branch_stock")
+      .select("quantity")
+      .eq("branch_id", currentBranchId);
+
+    if (!stockError) {
+      const totalStock = stockData.reduce(
+        (sum, item) => sum + item.quantity,
+        0,
+      );
+      document.getElementById("branchStock").textContent = totalStock;
+    }
+  } catch (error) {
+    console.error("Error updating statistics:", error);
+  }
+}
+
+// عرض رسائل النموذج
+function showSalesMessage(message, type) {
+  const element = document.getElementById("salesFormMessage");
+  element.textContent = message;
+  element.className = `alert alert-${type}`;
+  element.classList.remove("d-none");
+
+  setTimeout(() => {
+    element.classList.add("d-none");
+  }, 5000);
+}
+
+// جعل deleteSale متاحاً في النطاق العام
+window.deleteSale = deleteSale;

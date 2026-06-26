@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة الفرع - نظام MO</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../../assets/css/style.css">
+</head>
+<body>
+    <!-- الشريط الجانبي -->
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <h2>MO<span>.</span></h2>
+            <small>لوحة الفرع</small>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="active"><a href="dashboard.html"><i class="fas fa-chart-pie"></i><span>لوحة التحكم</span></a></li>
+            <li class="logout-item"><a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i><span>تسجيل الخروج</span></a></li>
+        </ul>
+    </div>
+
+    <!-- المحتوى الرئيسي -->
+    <div class="main-content">
+        <!-- شريط التنقل العلوي -->
+        <nav class="top-navbar">
+            <div>
+                <h4 class="mb-0"><i class="fas fa-store me-2"></i>لوحة الفرع</h4>
+            </div>
+            <div class="user-info">
+                <div class="avatar" id="userAvatar">B</div>
+                <span id="userName">فرع</span>
+                <span class="badge bg-primary" id="branchName">الفرع</span>
+            </div>
+        </nav>
+
+        <!-- بطاقات الإحصائيات -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="stats-card primary">
+                    <div class="stats-icon" style="background: rgba(44,62,80,0.1); color: var(--primary-color);">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <div class="stats-number" id="branchTodaySales">0</div>
+                    <div class="stats-label">مبيعات اليوم</div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="stats-card success">
+                    <div class="stats-icon" style="background: rgba(39,174,96,0.1); color: var(--success-color);">
+                        <i class="fas fa-boxes"></i>
+                    </div>
+                    <div class="stats-number" id="branchStock">0</div>
+                    <div class="stats-label">مخزون الفرع</div>
+                </div>
+            </div>
+            
+        </div>
+
+        <!-- نموذج إدخال المبيعات -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-shopping-cart me-2"></i>تسجيل مبيعات اليوم
+            </div>
+            <div class="card-body">
+                <div id="salesFormMessage" class="alert d-none"></div>
+                
+                <form id="dailySalesForm">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label">المنتج</label>
+                            <select class="form-select" id="salesProduct" required>
+                                <option value="">اختر المنتج</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">الكمية المباعة</label>
+                            <input type="number" class="form-control" id="salesQuantity" min="1" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">سعر البيع</label>
+                            <input type="number" class="form-control" id="salesPrice" required readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-plus me-2"></i>إضافة
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                
+                <hr>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover" id="todaySalesTable">
+                        <thead>
+                            <tr>
+                                <th>المنتج</th>
+                                <th>الكمية</th>
+                                <th>السعر</th>
+                                <th>الإجمالي</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="todaySalesBody">
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">لا توجد مبيعات اليوم</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="fw-bold">
+                                <td colspan="3">الإجمالي</td>
+                                <td id="todayTotal">0</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- مخزون الفرع -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-boxes me-2"></i>مخزون الفرع
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="branchStockTable">
+                        <thead>
+                            <tr>
+                                <th>المنتج</th>
+                                <th>الكمية</th>
+                            </tr>
+                        </thead>
+                        <tbody id="branchStockBody">
+                            <tr>
+                                <td colspan="2" class="text-center text-muted">لا توجد منتجات</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../../assets/js/config.js"></script>
+    <script src="../../assets/js/auth.js"></script>
+    <script src="../../assets/js/branch/dashboard.js"></script>
+</body>
+</html>
