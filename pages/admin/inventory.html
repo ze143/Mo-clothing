@@ -1,107 +1,172 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>الجرد - نظام MO</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../../assets/css/style.css">
-</head>
-<body>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="../../assets/css/style.css" />
+  </head>
+  <body>
     <div class="sidebar">
-        <div class="sidebar-brand">
-            <h2>MO<span>.</span></h2>
-            <small>لوحة التحكم</small>
-        </div>
-        <ul class="sidebar-menu">
-            <li><a href="dashboard.html"><i class="fas fa-chart-pie"></i><span>لوحة التحكم</span></a></li>
-            <li><a href="branches.html"><i class="fas fa-store"></i><span>الفروع</span></a></li>
-            <li><a href="products.html"><i class="fas fa-box"></i><span>المنتجات</span></a></li>
-            <li><a href="warehouse.html"><i class="fas fa-warehouse"></i><span>المخزن</span></a></li>
-            <li><a href="branch-transfers.html"><i class="fas fa-exchange-alt"></i><span>توريدات الفروع</span></a></li>
-            <li><a href="suppliers.html"><i class="fas fa-truck"></i><span>الموردين</span></a></li>
-            <li><a href="supplier-supplies.html"><i class="fas fa-cart-plus"></i><span>توريدات الموردين</span></a></li>
-            <li><a href="supplier-debts.html"><i class="fas fa-money-bill"></i><span>مديونيات الموردين</span></a></li>
-            <li><a href="day-closing.html"><i class="fas fa-lock"></i><span>إقفال اليوم</span></a></li>
-            <li><a href="day-closing-reports.html"><i class="fas fa-file-alt"></i><span>تقارير الإقفال</span></a></li>
-            <li class="active"><a href="inventory.html"><i class="fas fa-clipboard-list"></i><span>الجرد</span></a></li>
-            <li><a href="inventory-reports.html"><i class="fas fa-file-alt"></i><span>تقارير الجرد</span></a></li>
-            <li class="logout-item"><a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i><span>تسجيل الخروج</span></a></li>
-        </ul>
+      <div class="sidebar-brand">
+        <h2>MO<span>.</span></h2>
+        <small>لوحة التحكم</small>
+      </div>
+      <ul class="sidebar-menu">
+        <li>
+          <a href="dashboard.html"
+            ><i class="fas fa-chart-pie"></i><span>لوحة التحكم</span></a
+          >
+        </li>
+        <li>
+          <a href="branches.html"
+            ><i class="fas fa-store"></i><span>الفروع</span></a
+          >
+        </li>
+        <li>
+          <a href="products.html"
+            ><i class="fas fa-box"></i><span>المنتجات</span></a
+          >
+        </li>
+        <li>
+          <a href="warehouse.html"
+            ><i class="fas fa-warehouse"></i><span>المخزن</span></a
+          >
+        </li>
+        <li>
+          <a href="branch-transfers.html"
+            ><i class="fas fa-exchange-alt"></i><span>سجل التوريدات</span></a
+          >
+        </li>
+        <li>
+          <a href="suppliers.html"
+            ><i class="fas fa-truck"></i><span>الموردين</span></a
+          >
+        </li>
+        <li>
+          <a href="supplier-supplies.html"
+            ><i class="fas fa-cart-plus"></i><span>توريدات الموردين</span></a
+          >
+        </li>
+        <li>
+          <a href="supplier-debts.html"
+            ><i class="fas fa-money-bill"></i><span>مديونيات الموردين</span></a
+          >
+        </li>
+        <li>
+          <a href="day-closing.html"
+            ><i class="fas fa-lock"></i><span>إقفال اليوم</span></a
+          >
+        </li>
+        <li>
+          <a href="day-closing-reports.html"
+            ><i class="fas fa-file-alt"></i><span>تقارير الإقفال</span></a
+          >
+        </li>
+        <li class="active">
+          <a href="inventory.html"
+            ><i class="fas fa-clipboard-list"></i><span>الجرد</span></a
+          >
+        </li>
+        <li>
+          <a href="inventory-reports.html"
+            ><i class="fas fa-file-alt"></i><span>تقارير الجرد</span></a
+          >
+        </li>
+        <li class="logout-item">
+          <a href="#" onclick="logout()"
+            ><i class="fas fa-sign-out-alt"></i><span>تسجيل الخروج</span></a
+          >
+        </li>
+      </ul>
     </div>
 
     <div class="main-content">
-        <nav class="top-navbar">
-            <div>
-                <h4 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>الجرد</h4>
-            </div>
-            <div class="user-info">
-                <div class="avatar" id="userAvatar">A</div>
-                <span id="userName">أدمن</span>
-            </div>
-        </nav>
-
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-search me-2"></i>بدء جرد جديد
-            </div>
-            <div class="card-body">
-                <form id="inventoryForm" class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label">الفرع *</label>
-                        <select class="form-select" id="inventoryBranch" required>
-                            <option value="">اختر الفرع</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">التاريخ</label>
-                        <input type="date" class="form-control" id="inventoryDate" value="">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">&nbsp;</label>
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-play me-2"></i>بدء الجرد
-                        </button>
-                    </div>
-                </form>
-            </div>
+      <nav class="top-navbar">
+        <div>
+          <h4 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>الجرد</h4>
         </div>
-
-        <div id="inventoryContent" style="display: none;">
-            <div class="card">
-                <div class="card-header">
-                    <i class="fas fa-edit me-2"></i>تسجيل الجرد
-                    <span class="badge bg-primary ms-2" id="inventoryBranchName"></span>
-                </div>
-                <div class="card-body">
-                    <form id="auditForm">
-                        <input type="hidden" id="auditId">
-                        <div class="table-responsive">
-                            <table class="table table-hover" id="auditTable">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>المنتج</th>
-                                        <th>الكمية بالنظام</th>
-                                        <th>الكمية الفعلية</th>
-                                        <th>الفروق</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="auditBody">
-                                    <tr>
-                                        <td colspan="5" class="text-center text-muted">لا توجد منتجات</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <button type="submit" class="btn btn-success mt-3">
-                            <i class="fas fa-save me-2"></i>حفظ الجرد
-                        </button>
-                    </form>
-                </div>
-            </div>
+        <div class="user-info">
+          <div class="avatar" id="userAvatar">A</div>
+          <span id="userName">أدمن</span>
         </div>
+      </nav>
+
+      <div class="card mb-4">
+        <div class="card-header">
+          <i class="fas fa-search me-2"></i>بدء جرد جديد
+        </div>
+        <div class="card-body">
+          <form id="inventoryForm" class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">الفرع *</label>
+              <select class="form-select" id="inventoryBranch" required>
+                <option value="">اختر الفرع</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">التاريخ</label>
+              <input
+                type="date"
+                class="form-control"
+                id="inventoryDate"
+                value=""
+              />
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">&nbsp;</label>
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-play me-2"></i>بدء الجرد
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div id="inventoryContent" style="display: none">
+        <div class="card">
+          <div class="card-header">
+            <i class="fas fa-edit me-2"></i>تسجيل الجرد
+            <span class="badge bg-primary ms-2" id="inventoryBranchName"></span>
+          </div>
+          <div class="card-body">
+            <form id="auditForm">
+              <input type="hidden" id="auditId" />
+              <div class="table-responsive">
+                <table class="table table-hover" id="auditTable">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>المنتج</th>
+                      <th>الكمية بالنظام</th>
+                      <th>الكمية الفعلية</th>
+                      <th>الفروق</th>
+                    </tr>
+                  </thead>
+                  <tbody id="auditBody">
+                    <tr>
+                      <td colspan="5" class="text-center text-muted">
+                        لا توجد منتجات
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <button type="submit" class="btn btn-success mt-3">
+                <i class="fas fa-save me-2"></i>حفظ الجرد
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -109,5 +174,5 @@
     <script src="../../assets/js/config.js"></script>
     <script src="../../assets/js/auth.js"></script>
     <script src="../../assets/js/admin/inventory.js"></script>
-</body>
+  </body>
 </html>
