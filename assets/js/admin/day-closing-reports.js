@@ -47,10 +47,10 @@ async function loadReports() {
       .from("day_closing")
       .select(
         `
-        *,
-        branches(name),
-        profiles(full_name)
-    `,
+                *,
+                branches(name),
+                profiles(full_name)
+            `,
       )
       .eq("status", "completed")
       .order("closing_date", { ascending: false });
@@ -69,7 +69,8 @@ async function loadReports() {
 
     if (error) throw error;
 
-    displayReports(data);
+    // ✅ استدعاء displayReports بعد جلب البيانات
+    await displayReports(data);
     updateStatistics(data);
   } catch (error) {
     console.error("Error loading reports:", error);
@@ -77,8 +78,39 @@ async function loadReports() {
   }
 }
 
+// ✅ ضع هذه الدالة في آخر الملف أو قبل displayReports
+async function calculateReportProfit(branchId, closingDate) {
+  try {
+    const { data, error } = await supabaseClient
+      .from("daily_sales")
+      .select(
+        `
+                quantity,
+                products(purchase_price, price)
+            `,
+      )
+      .eq("branch_id", branchId)
+      .eq("sale_date", closingDate);
+
+    if (error) throw error;
+
+    let totalProfit = 0;
+    if (data) {
+      data.forEach((sale) => {
+        const purchasePrice = sale.products?.purchase_price || 0;
+        const sellingPrice = sale.products?.price || 0;
+        totalProfit += sale.quantity * (sellingPrice - purchasePrice);
+      });
+    }
+    return totalProfit;
+  } catch (error) {
+    console.error("Error calculating profit:", error);
+    return 0;
+  }
+}
+
 // عرض التقارير
-function displayReports(data) {
+async function displayReports(data) {
   const tbody = document.getElementById("reportsBody");
 
   if (data.length === 0) {
@@ -87,25 +119,33 @@ function displayReports(data) {
     return;
   }
 
-  tbody.innerHTML = data
-    .map(
-      (report, index) => `
-        <tr>
-            <td>${index + 1}</td>
-            <td>${new Date(report.closing_date).toLocaleDateString("ar")}</td>
-            <td>${report.branches?.name || "غير معروف"}</td>
-            <td>${formatCurrency(report.total_sales)}</td>
-            <td>${report.total_items_sold}</td>
-            <td>
-                <span class="badge ${report.status === "completed" ? "bg-success" : report.status === "pending" ? "bg-warning" : "bg-danger"}">
-                    ${report.status === "completed" ? "مكتمل" : report.status === "pending" ? "معلق" : "ملغي"}
-                </span>
-            </td>
-            <td>${report.profiles?.full_name || "غير معروف"}</td>
-        </tr>
-    `,
-    )
-    .join("");
+  let html = "";
+  for (let index = 0; index < data.length; index++) {
+    const report = data[index];
+    // ✅ حساب الأرباح لكل تقرير
+    const totalProfit = await calculateReportProfit(
+      report.branch_id,
+      report.closing_date,
+    );
+
+    html += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${new Date(report.closing_date).toLocaleDateString("ar")}</td>
+                <td>${report.branches?.name || "غير معروف"}</td>
+                <td>${formatCurrency(report.total_sales)}</td>
+                <td>${report.total_items_sold}</td>
+                <td>${formatCurrency(totalProfit)}</td>
+                <td>
+                    <span class="badge ${report.status === "completed" ? "bg-success" : report.status === "pending" ? "bg-warning" : "bg-danger"}">
+                        ${report.status === "completed" ? "مكتمل" : report.status === "pending" ? "معلق" : "ملغي"}
+                    </span>
+                </td>
+                <td>${report.profiles?.full_name || "غير معروف"}</td>
+            </tr>
+        `;
+  }
+  tbody.innerHTML = html;
 }
 
 // تحديث الإحصائيات

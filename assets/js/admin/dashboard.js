@@ -78,6 +78,25 @@ async function loadDashboardData() {
 
     if (productsError) throw productsError;
 
+    // حساب إجمالي الأرباح
+    const { data: profitData, error: profitError } = await supabaseClient.from(
+      "daily_sales",
+    ).select(`
+        quantity,
+        products(purchase_price, price)
+    `);
+
+    if (!profitError) {
+      let totalProfit = 0;
+      profitData.forEach((sale) => {
+        const purchasePrice = sale.products?.purchase_price || 0;
+        const sellingPrice = sale.products?.price || 0;
+        totalProfit += sale.quantity * (sellingPrice - purchasePrice);
+      });
+      document.getElementById("totalProfit").textContent =
+        formatCurrency(totalProfit);
+    }
+
     // 4. تحديث الإحصائيات
     document.getElementById("totalRevenue").textContent =
       formatCurrency(totalRevenue);

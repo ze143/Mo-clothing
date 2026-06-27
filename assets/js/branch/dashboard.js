@@ -132,20 +132,21 @@ function displayTodaySales() {
   if (todaySales.length === 0) {
     tbody.innerHTML =
       '<tr><td colspan="5" class="text-center text-muted">لا توجد مبيعات اليوم</td></tr>';
-    totalElement.textContent = "0";
+    totalElement.textContent = formatCurrency(0);
     return;
   }
 
   let total = 0;
   tbody.innerHTML = todaySales
     .map((sale) => {
-      const subtotal = sale.quantity * sale.products.price;
+      // ✅ استخدم unit_price (سعر البيع)
+      const subtotal = sale.quantity * (sale.unit_price || sale.products.price);
       total += subtotal;
       return `
             <tr>
                 <td>${sale.products.name}</td>
                 <td>${sale.quantity}</td>
-                <td>${formatCurrency(sale.products.price)}</td>
+                <td>${formatCurrency(sale.unit_price || sale.products.price)}</td>
                 <td>${formatCurrency(subtotal)}</td>
                 <td>
                     <button class="btn btn-sm btn-danger" onclick="deleteSale('${sale.id}')">
@@ -166,7 +167,7 @@ async function handleAddSale(e) {
 
   const productId = document.getElementById("salesProduct").value;
   const quantity = parseInt(document.getElementById("salesQuantity").value);
-  const price = parseFloat(document.getElementById("salesPrice").value);
+  const price = parseFloat(document.getElementById("salesPrice").value); // سعر البيع
 
   if (!productId || !quantity || quantity < 1) {
     showSalesMessage("يرجى اختيار المنتج وإدخال كمية صحيحة", "danger");
@@ -174,7 +175,7 @@ async function handleAddSale(e) {
   }
 
   try {
-    // التحقق من وجود المنتج في مخزون الفرع
+    // التحقق من المخزون
     const { data: stockData, error: stockError } = await supabaseClient
       .from("branch_stock")
       .select("quantity")
@@ -195,20 +196,21 @@ async function handleAddSale(e) {
       return;
     }
 
-    // إضافة المبيعات
+    // ✅ إضافة المبيعات (بسعر البيع فقط)
     const { data, error } = await supabaseClient
       .from("daily_sales")
       .insert({
         branch_id: currentBranchId,
         product_id: productId,
         quantity: quantity,
+        unit_price: price, // سعر البيع
         sale_date: todayDate,
       })
       .select();
 
     if (error) throw error;
 
-    // تحديث مخزون الفرع
+    // تحديث المخزون
     await supabaseClient
       .from("branch_stock")
       .update({ quantity: currentStock - quantity })
@@ -320,6 +322,7 @@ async function loadBranchStock() {
 
 async function updateStatistics() {
   try {
+    // مبيعات اليوم (على أساس سعر البيع)
     const todayTotal = todaySales.reduce(
       (sum, sale) => sum + sale.quantity * sale.products.price,
       0,
@@ -327,6 +330,7 @@ async function updateStatistics() {
     document.getElementById("branchTodaySales").textContent =
       formatCurrency(todayTotal);
 
+    // مخزون الفرع
     const { data: stockData, error: stockError } = await supabaseClient
       .from("branch_stock")
       .select("quantity")

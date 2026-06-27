@@ -709,7 +709,6 @@ function showMessage(element, message, type) {
 // دوال التوريد من المخزن
 // =============================================
 
-
 // عرض مودال التوريد
 function showSupplyModal() {
   const modal = document.getElementById("supplyModal");
