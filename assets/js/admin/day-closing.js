@@ -66,7 +66,6 @@ async function loadBranchClosingData() {
     document.getElementById("closingData").style.display = "block";
 
     if (data.length === 0) {
-      document.getElementById("closingTotal").textContent = formatCurrency(0);
       document.getElementById("closingItems").textContent = "0";
       document.getElementById("closingProducts").innerHTML =
         '<tr><td colspan="4" class="text-center text-muted">لا توجد مبيعات</td></tr>';
@@ -87,14 +86,11 @@ async function loadBranchClosingData() {
                 <tr>
                     <td>${sale.products.name}</td>
                     <td>${sale.quantity}</td>
-                    <td>${formatCurrency(sale.products.price)}</td>
-                    <td>${formatCurrency(subtotal)}</td>
                 </tr>
             `;
     });
 
-    document.getElementById("closingTotal").textContent =
-      formatCurrency(totalSales);
+   
     document.getElementById("closingItems").textContent = totalItems;
     document.getElementById("closingProducts").innerHTML = productsHtml;
   } catch (error) {
@@ -149,7 +145,6 @@ async function closeDay() {
       .insert({
         branch_id: currentBranchId,
         closing_date: todayDate,
-        total_sales: totalSales,
         total_items_sold: totalItems,
         closed_by: userId,
         notes: "إقفال يومي",

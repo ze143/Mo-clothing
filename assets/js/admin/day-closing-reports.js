@@ -1,3 +1,7 @@
+// =============================================
+// تقارير الإقفال - نسخة بدون فلوس
+// =============================================
+
 document.addEventListener("DOMContentLoaded", async function () {
   const user = await checkAuthAndRedirect();
   if (!user || user.profile.role !== "admin") {
@@ -50,7 +54,7 @@ async function loadReports() {
                 *,
                 branches(name),
                 profiles(full_name)
-            `,
+            `
       )
       .eq("status", "completed")
       .order("closing_date", { ascending: false });
@@ -69,8 +73,7 @@ async function loadReports() {
 
     if (error) throw error;
 
-    // ✅ استدعاء displayReports بعد جلب البيانات
-    await displayReports(data);
+    displayReports(data);
     updateStatistics(data);
   } catch (error) {
     console.error("Error loading reports:", error);
@@ -78,95 +81,64 @@ async function loadReports() {
   }
 }
 
-// ✅ ضع هذه الدالة في آخر الملف أو قبل displayReports
-async function calculateReportProfit(branchId, closingDate) {
-  try {
-    const { data, error } = await supabaseClient
-      .from("daily_sales")
-      .select(
-        `
-                quantity,
-                products(purchase_price, price)
-            `,
-      )
-      .eq("branch_id", branchId)
-      .eq("sale_date", closingDate);
-
-    if (error) throw error;
-
-    let totalProfit = 0;
-    if (data) {
-      data.forEach((sale) => {
-        const purchasePrice = sale.products?.purchase_price || 0;
-        const sellingPrice = sale.products?.price || 0;
-        totalProfit += sale.quantity * (sellingPrice - purchasePrice);
-      });
-    }
-    return totalProfit;
-  } catch (error) {
-    console.error("Error calculating profit:", error);
-    return 0;
-  }
-}
-
 // عرض التقارير
-async function displayReports(data) {
+function displayReports(data) {
   const tbody = document.getElementById("reportsBody");
 
   if (data.length === 0) {
     tbody.innerHTML =
-      '<tr><td colspan="8" class="text-center text-muted">لا توجد تقارير إقفال</td></tr>';
+      '<tr><td colspan="6" class="text-center text-muted">لا توجد تقارير إقفال</td></tr>';
     return;
   }
 
-  let html = "";
-  for (let index = 0; index < data.length; index++) {
-    const report = data[index];
-    // ✅ حساب الأرباح لكل تقرير
-    const totalProfit = await calculateReportProfit(
-      report.branch_id,
-      report.closing_date,
-    );
+  tbody.innerHTML = data
+    .map((report, index) => {
+      const statusBadge =
+        report.status === "completed"
+          ? "bg-success"
+          : report.status === "pending"
+          ? "bg-warning"
+          : "bg-danger";
+      const statusText =
+        report.status === "completed"
+          ? "مكتمل"
+          : report.status === "pending"
+          ? "معلق"
+          : "ملغي";
 
-    html += `
+      return `
             <tr>
                 <td>${index + 1}</td>
                 <td>${new Date(report.closing_date).toLocaleDateString("ar")}</td>
                 <td>${report.branches?.name || "غير معروف"}</td>
-                <td>${formatCurrency(report.total_sales)}</td>
-                <td>${report.total_items_sold}</td>
-                <td>${formatCurrency(totalProfit)}</td>
+                <td>${report.total_items_sold || 0}</td>
                 <td>
-                    <span class="badge ${report.status === "completed" ? "bg-success" : report.status === "pending" ? "bg-warning" : "bg-danger"}">
-                        ${report.status === "completed" ? "مكتمل" : report.status === "pending" ? "معلق" : "ملغي"}
+                    <span class="badge ${statusBadge}">
+                        ${statusText}
                     </span>
                 </td>
                 <td>${report.profiles?.full_name || "غير معروف"}</td>
             </tr>
         `;
-  }
-  tbody.innerHTML = html;
+    })
+    .join("");
 }
 
 // تحديث الإحصائيات
 function updateStatistics(data) {
   if (data.length === 0) {
-    document.getElementById("totalRevenue").textContent = "0 ج.م";
     document.getElementById("totalItems").textContent = "0";
     document.getElementById("totalDays").textContent = "0";
     document.getElementById("totalBranches").textContent = "0";
     return;
   }
 
-  const totalRevenue = data.reduce((sum, r) => sum + (r.total_sales || 0), 0);
   const totalItems = data.reduce(
     (sum, r) => sum + (r.total_items_sold || 0),
-    0,
+    0
   );
   const uniqueBranches = new Set(data.map((r) => r.branch_id)).size;
 
-  document.getElementById("totalRevenue").textContent =
-    formatCurrency(totalRevenue);
   document.getElementById("totalItems").textContent = totalItems;
   document.getElementById("totalDays").textContent = data.length;
   document.getElementById("totalBranches").textContent = uniqueBranches;
@@ -178,14 +150,7 @@ function exportReport() {
   let csv = [];
 
   // رأس CSV
-  const headers = [
-    "التاريخ",
-    "الفرع",
-    "إجمالي المبيعات",
-    "عدد القطع",
-    "الحالة",
-    "المسؤول",
-  ];
+  const headers = ["التاريخ", "الفرع", "عدد القطع", "الحالة", "المسؤول"];
   csv.push(headers.join(","));
 
   // البيانات

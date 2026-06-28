@@ -17,39 +17,6 @@ const supabaseClient = supabase.createClient(
     }
 );
 
-// إعدادات العملة
-const CURRENCY_CONFIG = {
-    symbol: 'ج.م',
-    code: 'EGP',
-    locale: 'ar-EG',
-    format: 'standard' // standard | compact
-};
-
-// دالة تنسيق العملة
-function formatCurrency(amount) {
-    if (amount === undefined || amount === null) return '0 ج.م';
-    
-    const formatter = new Intl.NumberFormat('ar-EG', {
-        style: 'currency',
-        currency: 'EGP',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
-    
-    return formatter.format(amount);
-}
-
-// دالة تنسيق العملة بدون رمز
-function formatCurrencyNumber(amount) {
-    if (amount === undefined || amount === null) return '0';
-    return new Intl.NumberFormat('ar-EG').format(amount);
-}
-
-// تصدير الدوال
-window.CURRENCY_CONFIG = CURRENCY_CONFIG;
-window.formatCurrency = formatCurrency;
-window.formatCurrencyNumber = formatCurrencyNumber;
-
 // التحقق من حالة المصادقة مع معالجة الأخطاء
 async function checkAuth() {
     try {
@@ -170,22 +137,6 @@ function showError(message) {
 // دوال جديدة للتعامل مع الإعدادات والتنبيهات
 // =============================================
 
-// الحصول على إعدادات النظام
-async function getSystemSetting(key) {
-    try {
-        const { data, error } = await supabaseClient
-            .from('system_settings')
-            .select('value')
-            .eq('key', key)
-            .single();
-        
-        if (error) throw error;
-        return data?.value;
-    } catch (error) {
-        console.error('Error getting setting:', error);
-        return null;
-    }
-}
 
 // تسجيل نشاط في سجل التدقيق
 async function logActivity(action, details = {}) {
@@ -232,7 +183,6 @@ async function showLowStockAlert() {
 }
 
 // تصدير الدوال الجديدة
-window.getSystemSetting = getSystemSetting;
 window.logActivity = logActivity;
 window.checkLowStock = checkLowStock;
 window.showLowStockAlert = showLowStockAlert;

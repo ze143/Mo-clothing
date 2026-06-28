@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>توريدات الموردين - نظام MO</title>
+    <title>توريد للمخزن - نظام MO</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -46,21 +46,13 @@
             ><i class="fas fa-exchange-alt"></i><span>سجل التوريدات</span></a
           >
         </li>
-        <li>
-          <a href="suppliers.html"
-            ><i class="fas fa-truck"></i><span>الموردين</span></a
-          >
-        </li>
+
         <li class="active">
           <a href="supplier-supplies.html"
-            ><i class="fas fa-cart-plus"></i><span>توريدات الموردين</span></a
+            ><i class="fas fa-cart-plus"></i><span>توريد للمخزن</span></a
           >
         </li>
-        <li>
-          <a href="supplier-debts.html"
-            ><i class="fas fa-money-bill"></i><span>مديونيات الموردين</span></a
-          >
-        </li>
+
         <li>
           <a href="day-closing.html"
             ><i class="fas fa-lock"></i><span>إقفال اليوم</span></a
@@ -93,7 +85,7 @@
       <nav class="top-navbar">
         <div>
           <h4 class="mb-0">
-            <i class="fas fa-cart-plus me-2"></i>توريدات الموردين
+            <i class="fas fa-cart-plus me-2"></i>توريد للمخزن
           </h4>
         </div>
         <div class="user-info">
@@ -122,17 +114,15 @@
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>المورد</th>
                   <th>المنتج</th>
                   <th>الكمية</th>
-                  <th>سعر الشراء</th>
-                  <th>الإجمالي</th>
+                  <th>الملاحظات</th>
                   <th>التاريخ</th>
                 </tr>
               </thead>
               <tbody id="suppliesBody">
                 <tr>
-                  <td colspan="7" class="text-center text-muted">
+                  <td colspan="5" class="text-center text-muted">
                     جاري التحميل...
                   </td>
                 </tr>
@@ -148,7 +138,9 @@
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">تسجيل توريد جديد</h5>
+            <h5 class="modal-title">
+              <i class="fas fa-warehouse me-2"></i>توريد للمخزن
+            </h5>
             <button
               type="button"
               class="btn-close"
@@ -157,12 +149,6 @@
           </div>
           <div class="modal-body">
             <form id="supplyForm">
-              <div class="mb-3">
-                <label class="form-label">المورد *</label>
-                <select class="form-select" id="supplySupplier" required>
-                  <option value="">اختر المورد</option>
-                </select>
-              </div>
               <div class="mb-3">
                 <label class="form-label">المنتج *</label>
                 <select class="form-select" id="supplyProduct" required>
@@ -180,29 +166,12 @@
                 />
               </div>
               <div class="mb-3">
-                <label class="form-label">سعر الوحدة *</label>
-                <input
-                  type="number"
-                  class="form-control"
-                  id="supplyPrice"
-                  step="0.01"
-                  required
-                />
-              </div>
-              <div class="mb-3">
-                <label class="form-label">رقم الفاتورة</label>
-                <input type="text" class="form-control" id="supplyInvoice" />
-              </div>
-              <div class="mb-3">
                 <label class="form-label">ملاحظات</label>
                 <textarea
                   class="form-control"
                   id="supplyNotes"
                   rows="2"
                 ></textarea>
-              </div>
-              <div class="alert alert-info">
-                <strong>الإجمالي:</strong> <span id="supplyTotal">0</span> ج.م
               </div>
             </form>
           </div>

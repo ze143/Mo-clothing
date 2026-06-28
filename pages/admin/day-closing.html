@@ -21,7 +21,7 @@
             <li><a href="warehouse.html"><i class="fas fa-warehouse"></i><span>المخزن</span></a></li>
             <li><a href="branch-transfers.html"><i class="fas fa-exchange-alt"></i><span>سجل التوريدات</span></a></li>
             <li><a href="suppliers.html"><i class="fas fa-truck"></i><span>الموردين</span></a></li>
-            <li><a href="supplier-supplies.html"><i class="fas fa-cart-plus"></i><span>توريدات الموردين</span></a></li>
+            <li><a href="supplier-supplies.html"><i class="fas fa-cart-plus"></i><span>توريد للمخزن</span></a></li>
             <li><a href="supplier-debts.html"><i class="fas fa-money-bill"></i><span>مديونيات الموردين</span></a></li>
             <li class="active"><a href="day-closing.html"><i class="fas fa-lock"></i><span>إقفال اليوم</span></a></li>
             <li><a href="day-closing-reports.html"><i class="fas fa-file-alt"></i><span>تقارير الإقفال</span></a></li>
@@ -64,12 +64,6 @@
                         <div class="card-body">
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <div class="alert alert-info">
-                                        <small class="text-muted">إجمالي الإيراد</small>
-                                        <h4 id="closingTotal">0 ج.م</h4>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
                                     <div class="alert alert-success">
                                         <small class="text-muted">عدد المنتجات المباعة</small>
                                         <h4 id="closingItems">0</h4>
@@ -83,8 +77,6 @@
                                         <tr>
                                             <th>المنتج</th>
                                             <th>الكمية</th>
-                                            <th>السعر</th>
-                                            <th>الإجمالي</th>
                                         </tr>
                                     </thead>
                                     <tbody id="closingProducts">

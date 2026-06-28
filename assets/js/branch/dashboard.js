@@ -80,18 +80,7 @@ async function loadProducts() {
     const select = document.getElementById("salesProduct");
     select.innerHTML = '<option value="">اختر المنتج</option>';
     data.forEach((product) => {
-      select.innerHTML += `<option value="${product.id}" data-price="${product.price}">${product.name}</option>`;
-    });
-
-    // إضافة حدث تغيير السعر
-    select.addEventListener("change", function () {
-      const priceInput = document.getElementById("salesPrice");
-      if (this.value) {
-        const selected = this.options[this.selectedIndex];
-        priceInput.value = selected.dataset.price;
-      } else {
-        priceInput.value = "";
-      }
+      select.innerHTML += `<option value="${product.id}">${product.name}</option>`;
     });
   } catch (error) {
     console.error("Error loading products:", error);
@@ -131,23 +120,19 @@ function displayTodaySales() {
 
   if (todaySales.length === 0) {
     tbody.innerHTML =
-      '<tr><td colspan="5" class="text-center text-muted">لا توجد مبيعات اليوم</td></tr>';
-    totalElement.textContent = formatCurrency(0);
+      '<tr><td colspan="3" class="text-center text-muted">لا توجد مبيعات اليوم</td></tr>';
+    totalElement.textContent = "0";
     return;
   }
 
   let total = 0;
   tbody.innerHTML = todaySales
     .map((sale) => {
-      // ✅ استخدم unit_price (سعر البيع)
-      const subtotal = sale.quantity * (sale.unit_price || sale.products.price);
-      total += subtotal;
+      total += sale.quantity;
       return `
             <tr>
                 <td>${sale.products.name}</td>
                 <td>${sale.quantity}</td>
-                <td>${formatCurrency(sale.unit_price || sale.products.price)}</td>
-                <td>${formatCurrency(subtotal)}</td>
                 <td>
                     <button class="btn btn-sm btn-danger" onclick="deleteSale('${sale.id}')">
                         <i class="fas fa-trash"></i>
@@ -158,7 +143,7 @@ function displayTodaySales() {
     })
     .join("");
 
-  totalElement.textContent = formatCurrency(total);
+  totalElement.textContent = total;
 }
 
 // إضافة مبيعات جديدة
@@ -167,7 +152,6 @@ async function handleAddSale(e) {
 
   const productId = document.getElementById("salesProduct").value;
   const quantity = parseInt(document.getElementById("salesQuantity").value);
-  const price = parseFloat(document.getElementById("salesPrice").value); // سعر البيع
 
   if (!productId || !quantity || quantity < 1) {
     showSalesMessage("يرجى اختيار المنتج وإدخال كمية صحيحة", "danger");
@@ -175,7 +159,6 @@ async function handleAddSale(e) {
   }
 
   try {
-    // التحقق من المخزون
     const { data: stockData, error: stockError } = await supabaseClient
       .from("branch_stock")
       .select("quantity")
@@ -196,35 +179,30 @@ async function handleAddSale(e) {
       return;
     }
 
-    // ✅ إضافة المبيعات (بسعر البيع فقط)
+    // إضافة المبيعات (بدون فلوس)
     const { data, error } = await supabaseClient
       .from("daily_sales")
       .insert({
         branch_id: currentBranchId,
         product_id: productId,
         quantity: quantity,
-        unit_price: price, // سعر البيع
         sale_date: todayDate,
       })
       .select();
 
     if (error) throw error;
 
-    // تحديث المخزون
     await supabaseClient
       .from("branch_stock")
       .update({ quantity: currentStock - quantity })
       .eq("branch_id", currentBranchId)
       .eq("product_id", productId);
 
-    // إعادة تحميل البيانات
     await loadTodaySales();
     await loadBranchStock();
     await updateStatistics();
 
-    // إعادة تعيين النموذج
     document.getElementById("dailySalesForm").reset();
-    document.getElementById("salesPrice").value = "";
 
     showSalesMessage("تم إضافة المبيعات بنجاح", "success");
   } catch (error) {
@@ -322,13 +300,9 @@ async function loadBranchStock() {
 
 async function updateStatistics() {
   try {
-    // مبيعات اليوم (على أساس سعر البيع)
-    const todayTotal = todaySales.reduce(
-      (sum, sale) => sum + sale.quantity * sale.products.price,
-      0,
-    );
-    document.getElementById("branchTodaySales").textContent =
-      formatCurrency(todayTotal);
+    // مبيعات اليوم (عدد القطع)
+    const todayTotal = todaySales.reduce((sum, sale) => sum + sale.quantity, 0);
+    document.getElementById("branchTodaySales").textContent = todayTotal;
 
     // مخزون الفرع
     const { data: stockData, error: stockError } = await supabaseClient

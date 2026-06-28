@@ -48,22 +48,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
 async function loadDashboardData() {
   try {
-    // 1. الحصول على إجمالي الإيرادات من تقارير الإقفال
-    const { data: closingData, error: closingError } = await supabaseClient
-      .from("day_closing")
-      .select("total_sales, total_items_sold");
-
-    if (closingError) throw closingError;
-
-    // حساب الإجماليات
-    let totalRevenue = 0;
-    let totalSales = 0;
-
-    closingData.forEach((item) => {
-      totalRevenue += item.total_sales || 0;
-      totalSales += item.total_items_sold || 0;
-    });
-
     // 2. الحصول على عدد الفروع
     const { count: branchesCount, error: branchesError } = await supabaseClient
       .from("branches")
@@ -78,30 +62,7 @@ async function loadDashboardData() {
 
     if (productsError) throw productsError;
 
-    // حساب إجمالي الأرباح
-    const { data: profitData, error: profitError } = await supabaseClient.from(
-      "daily_sales",
-    ).select(`
-        quantity,
-        products(purchase_price, price)
-    `);
-
-    if (!profitError) {
-      let totalProfit = 0;
-      profitData.forEach((sale) => {
-        const purchasePrice = sale.products?.purchase_price || 0;
-        const sellingPrice = sale.products?.price || 0;
-        totalProfit += sale.quantity * (sellingPrice - purchasePrice);
-      });
-      document.getElementById("totalProfit").textContent =
-        formatCurrency(totalProfit);
-    }
-
     // 4. تحديث الإحصائيات
-    document.getElementById("totalRevenue").textContent =
-      formatCurrency(totalRevenue);
-    document.getElementById("totalSales").textContent =
-      totalSales.toLocaleString();
     document.getElementById("totalBranches").textContent = branchesCount || 0;
     document.getElementById("totalProducts").textContent = productsCount || 0;
   } catch (error) {
@@ -150,7 +111,6 @@ async function loadProducts() {
   }
 }
 
-// تحميل آخر المبيعات
 async function loadRecentSales() {
   try {
     const { data, error } = await supabaseClient
@@ -159,7 +119,7 @@ async function loadRecentSales() {
         `
                 *,
                 branches(name),
-                products(name, price)
+                products(name)
             `,
       )
       .eq("is_closed", true)
@@ -171,7 +131,7 @@ async function loadRecentSales() {
     const tbody = document.getElementById("recentSalesBody");
     if (data.length === 0) {
       tbody.innerHTML =
-        '<tr><td colspan="5" class="text-center text-muted">لا توجد مبيعات</td></tr>';
+        '<tr><td colspan="4" class="text-center text-muted">لا توجد مبيعات</td></tr>';
       return;
     }
 
@@ -183,7 +143,6 @@ async function loadRecentSales() {
                 <td>${sale.branches?.name || "غير معروف"}</td>
                 <td>${sale.products?.name || "غير معروف"}</td>
                 <td>${sale.quantity}</td>
-                <td>${formatCurrency(sale.quantity * (sale.products?.price || 0))}</td>
             </tr>
         `,
       )
@@ -236,19 +195,17 @@ function resetFilters() {
 // تحديث الرسوم البيانية
 async function updateCharts() {
   try {
-    // بناء استعلام المبيعات
     let query = supabaseClient
       .from("daily_sales")
       .select(
         `
         *,
         branches(name),
-        products(name, price)
+        products(name)
     `,
       )
       .eq("is_closed", true);
 
-    // تطبيق الفلاتر
     if (currentFilters.dateFrom) {
       query = query.gte("sale_date", currentFilters.dateFrom);
     }
@@ -265,7 +222,6 @@ async function updateCharts() {
     const { data, error } = await query;
     if (error) throw error;
 
-    // تحليل البيانات للرسوم البيانية
     const branchSales = {};
     const productSales = {};
 
@@ -273,17 +229,12 @@ async function updateCharts() {
       const branchName = sale.branches?.name || "غير معروف";
       const productName = sale.products?.name || "غير معروف";
 
-      branchSales[branchName] =
-        (branchSales[branchName] || 0) +
-        sale.quantity * (sale.products?.price || 0);
+      branchSales[branchName] = (branchSales[branchName] || 0) + sale.quantity;
       productSales[productName] =
         (productSales[productName] || 0) + sale.quantity;
     });
 
-    // تحديث رسم مبيعات الفروع
     createBranchSalesChart(branchSales);
-
-    // تحديث رسم أفضل المنتجات
     createTopProductsChart(productSales);
   } catch (error) {
     console.error("Error updating charts:", error);
@@ -307,7 +258,7 @@ function createBranchSalesChart(data) {
       labels: labels,
       datasets: [
         {
-          label: "إجمالي المبيعات",
+          label: "عدد المبيعات",
           data: values,
           backgroundColor: [
             "rgba(44,62,80,0.8)",
@@ -338,7 +289,7 @@ function createBranchSalesChart(data) {
         tooltip: {
           callbacks: {
             label: function (context) {
-              return formatCurrency(context.parsed.y);
+              return context.parsed.y + " قطعة";
             },
           },
         },
@@ -348,7 +299,7 @@ function createBranchSalesChart(data) {
           beginAtZero: true,
           ticks: {
             callback: function (value) {
-              return formatCurrency(value);
+              return value;
             },
           },
         },
@@ -356,7 +307,6 @@ function createBranchSalesChart(data) {
     },
   });
 }
-
 // إنشاء رسم أفضل المنتجات
 function createTopProductsChart(data) {
   // ترتيب المنتجات حسب الكمية

@@ -1,3 +1,7 @@
+// =============================================
+// توريد للمخزن - نسخة بدون موردين
+// =============================================
+
 let supplyModal = null;
 
 document.addEventListener("DOMContentLoaded", async function () {
@@ -16,47 +20,11 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   supplyModal = new bootstrap.Modal(document.getElementById("supplyModal"));
 
-  await loadSuppliers();
   await loadProducts();
   await loadSupplies();
-
-  // حساب الإجمالي تلقائياً
-  document
-    .getElementById("supplyQuantity")
-    .addEventListener("input", calculateTotal);
-  document
-    .getElementById("supplyPrice")
-    .addEventListener("input", calculateTotal);
 });
 
-function calculateTotal() {
-  const quantity =
-    parseInt(document.getElementById("supplyQuantity").value) || 0;
-  const price = parseFloat(document.getElementById("supplyPrice").value) || 0;
-  const total = quantity * price;
-  document.getElementById("supplyTotal").textContent = total.toFixed(2);
-}
-
-async function loadSuppliers() {
-  try {
-    const { data, error } = await supabaseClient
-      .from("suppliers")
-      .select("*")
-      .order("name");
-
-    if (error) throw error;
-
-    const select = document.getElementById("supplySupplier");
-    select.innerHTML = '<option value="">اختر المورد</option>';
-    data.forEach((supplier) => {
-      select.innerHTML += `<option value="${supplier.id}">${supplier.name}</option>`;
-    });
-  } catch (error) {
-    console.error("Error loading suppliers:", error);
-    showError("فشل تحميل الموردين");
-  }
-}
-
+// تحميل المنتجات
 async function loadProducts() {
   try {
     const { data, error } = await supabaseClient
@@ -77,6 +45,8 @@ async function loadProducts() {
   }
 }
 
+// تحميل سجل التوريدات
+// تحميل سجل التوريدات
 async function loadSupplies() {
   try {
     const { data, error } = await supabaseClient
@@ -84,7 +54,6 @@ async function loadSupplies() {
       .select(
         `
                 *,
-                suppliers(name),
                 products(name)
             `,
       )
@@ -95,7 +64,7 @@ async function loadSupplies() {
     const tbody = document.getElementById("suppliesBody");
     if (data.length === 0) {
       tbody.innerHTML =
-        '<tr><td colspan="7" class="text-center text-muted">لا توجد توريدات</td></tr>';
+        '<tr><td colspan="5" class="text-center text-muted">لا توجد توريدات</td></tr>';
       return;
     }
 
@@ -104,11 +73,9 @@ async function loadSupplies() {
         (supply, index) => `
             <tr>
                 <td>${index + 1}</td>
-                <td>${supply.suppliers?.name || "غير معروف"}</td>
                 <td>${supply.products?.name || "غير معروف"}</td>
                 <td>${supply.quantity}</td>
-                <td>${formatCurrency(supply.price)}</td>
-                <td><strong>${formatCurrency(supply.total)}</strong></td>
+                <td>${supply.notes || "-"}</td>
                 <td>${new Date(supply.supply_date).toLocaleDateString("ar")}</td>
             </tr>
         `,
@@ -120,40 +87,32 @@ async function loadSupplies() {
   }
 }
 
+// حفظ توريد جديد
 async function saveSupply() {
-  const supplierId = document.getElementById("supplySupplier").value;
   const productId = document.getElementById("supplyProduct").value;
   const quantity = parseInt(document.getElementById("supplyQuantity").value);
-  const price = parseFloat(document.getElementById("supplyPrice").value);
-  const invoiceNumber = document.getElementById("supplyInvoice").value.trim();
   const notes = document.getElementById("supplyNotes").value.trim();
 
-  if (!supplierId || !productId || !quantity || !price) {
-    alert("يرجى ملء جميع الحقول المطلوبة");
+  if (!productId || !quantity || quantity < 1) {
+    alert("يرجى اختيار المنتج وإدخال كمية صحيحة");
     return;
   }
 
-  const total = quantity * price;
-
   try {
-    // تسجيل التوريد
+    // 1. تسجيل التوريد
     const { data, error } = await supabaseClient
       .from("supplier_supplies")
       .insert({
-        supplier_id: supplierId,
         product_id: productId,
         quantity: quantity,
-        price: price,
-        total: total,
-        invoice_number: invoiceNumber,
-        notes: notes,
+        notes: notes || "توريد مباشر للمخزن",
       })
       .select()
       .single();
 
     if (error) throw error;
 
-    // تحديث مخزون المستودع
+    // 2. تحديث مخزون المستودع
     const { data: warehouseData, error: warehouseError } = await supabaseClient
       .from("warehouse_stock")
       .select("quantity")
@@ -176,15 +135,16 @@ async function saveSupply() {
       });
     }
 
-    showSuccess("تم تسجيل التوريد بنجاح");
+    showSuccess("✅ تم إضافة التوريد بنجاح");
+    document.getElementById("supplyForm").reset();
     await loadSupplies();
     supplyModal.hide();
-    document.getElementById("supplyForm").reset();
-    document.getElementById("supplyTotal").textContent = "0";
   } catch (error) {
     console.error("Error saving supply:", error);
     alert("فشل تسجيل التوريد: " + error.message);
   }
 }
 
+// جعل الدوال متاحة
 window.saveSupply = saveSupply;
+window.loadSupplies = loadSupplies;

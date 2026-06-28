@@ -46,21 +46,13 @@
             ><i class="fas fa-exchange-alt"></i><span>سجل التوريدات</span></a
           >
         </li>
-        <li>
-          <a href="suppliers.html"
-            ><i class="fas fa-truck"></i><span>الموردين</span></a
-          >
-        </li>
+
         <li>
           <a href="supplier-supplies.html"
-            ><i class="fas fa-cart-plus"></i><span>توريدات الموردين</span></a
+            ><i class="fas fa-cart-plus"></i><span>توريد للمخزن</span></a
           >
         </li>
-        <li>
-          <a href="supplier-debts.html"
-            ><i class="fas fa-money-bill"></i><span>مديونيات الموردين</span></a
-          >
-        </li>
+
         <li>
           <a href="day-closing.html"
             ><i class="fas fa-lock"></i><span>إقفال اليوم</span></a
@@ -132,22 +124,7 @@
 
       <!-- إحصائيات سريعة -->
       <div class="row g-4 mb-4" id="statsCards">
-        <div class="col-md-3">
-          <div class="stats-card primary">
-            <div
-              class="stats-icon"
-              style="
-                background: rgba(44, 62, 80, 0.1);
-                color: var(--primary-color);
-              "
-            >
-              <i class="fas fa-money-bill-wave"></i>
-            </div>
-            <div class="stats-number" id="totalRevenue">0 ج.م</div>
-            <div class="stats-label">إجمالي الإيرادات</div>
-          </div>
-        </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
           <div class="stats-card success">
             <div
               class="stats-icon"
@@ -162,7 +139,7 @@
             <div class="stats-label">إجمالي القطع المباعة</div>
           </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
           <div class="stats-card warning">
             <div
               class="stats-icon"
@@ -177,7 +154,7 @@
             <div class="stats-label">عدد أيام الإقفال</div>
           </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
           <div class="stats-card danger">
             <div
               class="stats-icon"
@@ -212,9 +189,7 @@
                   <th>#</th>
                   <th>التاريخ</th>
                   <th>الفرع</th>
-                  <th>إجمالي المبيعات</th>
                   <th>عدد القطع</th>
-                  <th>إجمالي الأرباح</th>
                   <th>الحالة</th>
                   <th>المسؤول</th>
                 </tr>
