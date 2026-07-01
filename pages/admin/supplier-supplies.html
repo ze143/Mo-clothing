@@ -118,6 +118,7 @@
                   <th>الكمية</th>
                   <th>الملاحظات</th>
                   <th>التاريخ</th>
+                  <th>الإجراءات</th>
                 </tr>
               </thead>
               <tbody id="suppliesBody">
@@ -189,6 +190,69 @@
               onclick="saveSupply()"
             >
               حفظ التوريد
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- مودال تعديل التوريد -->
+    <div class="modal fade" id="editSupplyModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="fas fa-edit me-2"></i>تعديل التوريد
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form id="editSupplyForm">
+              <input type="hidden" id="editSupplyId" />
+              <div class="mb-3">
+                <label class="form-label">المنتج *</label>
+                <select class="form-select" id="editProduct" required>
+                  <option value="">اختر المنتج</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">الكمية *</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="editQuantity"
+                  min="1"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">الملاحظات</label>
+                <textarea
+                  class="form-control"
+                  id="editNotes"
+                  rows="2"
+                ></textarea>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              إلغاء
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              onclick="updateSupply()"
+            >
+              <i class="fas fa-save me-2"></i>حفظ التعديل
             </button>
           </div>
         </div>
