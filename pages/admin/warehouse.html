@@ -32,6 +32,11 @@
           >
         </li>
         <li>
+          <a href="branch-report.html"
+            ><i class="fas fa-chart-bar"></i><span>تقرير الفروع</span></a
+          >
+        </li>
+        <li>
           <a href="products.html"
             ><i class="fas fa-box"></i><span>المنتجات</span></a
           >
@@ -46,13 +51,11 @@
             ><i class="fas fa-exchange-alt"></i><span>سجل التوريدات</span></a
           >
         </li>
-
         <li>
           <a href="supplier-supplies.html"
             ><i class="fas fa-cart-plus"></i><span>توريد للمخزن</span></a
           >
         </li>
-
         <li>
           <a href="day-closing.html"
             ><i class="fas fa-lock"></i><span>إقفال اليوم</span></a
@@ -94,24 +97,130 @@
         </div>
       </nav>
 
-      <div class="card">
-        <div class="card-header">
-          <i class="fas fa-list me-2"></i>مخزون المستودع
+      <!-- إحصائيات المخزن -->
+      <div class="row g-4 mb-4">
+        <div class="col-md-3">
+          <div class="stats-card primary">
+            <div
+              class="stats-icon"
+              style="
+                background: rgba(44, 62, 80, 0.1);
+                color: var(--primary-color);
+              "
+            >
+              <i class="fas fa-boxes"></i>
+            </div>
+            <div class="stats-number" id="totalProducts">0</div>
+            <div class="stats-label">إجمالي المنتجات</div>
+          </div>
         </div>
+        <div class="col-md-3">
+          <div class="stats-card success">
+            <div
+              class="stats-icon"
+              style="
+                background: rgba(39, 174, 96, 0.1);
+                color: var(--success-color);
+              "
+            >
+              <i class="fas fa-cubes"></i>
+            </div>
+            <div class="stats-number" id="totalItems">0</div>
+            <div class="stats-label">إجمالي القطع</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stats-card warning">
+            <div
+              class="stats-icon"
+              style="
+                background: rgba(243, 156, 18, 0.1);
+                color: var(--warning-color);
+              "
+            >
+              <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stats-number" id="lowStock">0</div>
+            <div class="stats-label">منخفض (< 10)</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="stats-card danger">
+            <div
+              class="stats-icon"
+              style="
+                background: rgba(231, 76, 60, 0.1);
+                color: var(--danger-color);
+              "
+            >
+              <i class="fas fa-times-circle"></i>
+            </div>
+            <div class="stats-number" id="emptyStock">0</div>
+            <div class="stats-label">نفذ</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- فلاتر -->
+      <div class="card mb-4">
         <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-hover" id="warehouseTable">
-              <thead>
+          <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+              <label class="form-label">بحث</label>
+              <input
+                type="text"
+                class="form-control"
+                id="searchProduct"
+                placeholder="ابحث عن منتج..."
+              />
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">حالة المنتج</label>
+              <select class="form-select" id="filterStatus">
+                <option value="">جميع الحالات</option>
+                <option value="available">متوفر</option>
+                <option value="low">منخفض</option>
+                <option value="empty">نفذ</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">&nbsp;</label>
+              <button class="btn btn-secondary w-100" onclick="resetFilters()">
+                <i class="fas fa-undo me-2"></i>إعادة تعيين
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- جدول المخزون -->
+      <div class="card">
+        <div
+          class="card-header d-flex justify-content-between align-items-center"
+        >
+          <span><i class="fas fa-list me-2"></i>مخزون المستودع</span>
+        </div>
+        <div class="card-body p-0">
+          <div
+            class="table-responsive"
+            style="max-height: 500px; overflow-y: auto"
+          >
+            <table
+              class="table table-hover table-striped mb-0"
+              id="warehouseTable"
+            >
+              <thead class="table-dark sticky-top">
                 <tr>
                   <th>#</th>
                   <th>المنتج</th>
                   <th>الكمية</th>
+                  <th>الحالة</th>
                 </tr>
               </thead>
               <tbody id="warehouseBody">
                 <tr>
-                  <td colspan="3" class="text-center text-muted">
-                    جاري التحميل...
+                  <td colspan="4" class="text-center text-muted py-4">
+                    <i class="fas fa-spinner fa-spin me-2"></i>جاري التحميل...
                   </td>
                 </tr>
               </tbody>
