@@ -7,6 +7,7 @@ let currentFilters = {
   branchId: "",
   productId: "",
 };
+let allSalesData = []; // تخزين كل المبيعات
 
 // تهيئة الصفحة
 document.addEventListener("DOMContentLoaded", async function () {
@@ -14,14 +15,12 @@ document.addEventListener("DOMContentLoaded", async function () {
     const user = await checkAuthAndRedirect();
     if (!user) return;
 
-    // التحقق من صلاحيات الأدمن
     if (user.profile.role !== "admin") {
       alert("غير مصرح لك بالوصول إلى هذه الصفحة");
       window.location.href = "/pages/login.html";
       return;
     }
 
-    // عرض معلومات المستخدم
     const avatar = document.getElementById("userAvatar");
     const userName = document.getElementById("userName");
     avatar.textContent = user.profile.full_name
@@ -29,14 +28,12 @@ document.addEventListener("DOMContentLoaded", async function () {
       : "A";
     userName.textContent = user.profile.full_name || "أدمن";
 
-    // تحميل البيانات
     await loadDashboardData();
     await loadBranches();
     await loadProducts();
-    await loadRecentSales();
+    await loadAllSales(); // تحميل كل المبيعات
     await loadAdditionalStats();
 
-    // تحديث الرسوم البيانية بعد تحميل البيانات
     setTimeout(() => {
       updateCharts();
     }, 1000);
@@ -46,32 +43,80 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 });
 
-async function loadDashboardData() {
+// تحميل كل المبيعات (بدون حد)
+async function loadAllSales() {
   try {
-    // 2. الحصول على عدد الفروع
-    const { count: branchesCount, error: branchesError } = await supabaseClient
-      .from("branches")
-      .select("*", { count: "exact", head: true });
+    let query = supabaseClient
+      .from("daily_sales")
+      .select(
+        `
+        *,
+        branches(name),
+        products(name)
+      `,
+      )
+      .eq("is_closed", true)
+      .order("created_at", { ascending: false });
 
-    if (branchesError) throw branchesError;
+    // تطبيق الفلاتر
+    if (currentFilters.dateFrom) {
+      query = query.gte("sale_date", currentFilters.dateFrom);
+    }
+    if (currentFilters.dateTo) {
+      query = query.lte("sale_date", currentFilters.dateTo);
+    }
+    if (currentFilters.branchId) {
+      query = query.eq("branch_id", currentFilters.branchId);
+    }
+    if (currentFilters.productId) {
+      query = query.eq("product_id", currentFilters.productId);
+    }
 
-    // 3. الحصول على عدد المنتجات
-    const { count: productsCount, error: productsError } = await supabaseClient
-      .from("products")
-      .select("*", { count: "exact", head: true });
+    const { data, error } = await query;
+    if (error) throw error;
 
-    if (productsError) throw productsError;
-
-    // 4. تحديث الإحصائيات
-    document.getElementById("totalBranches").textContent = branchesCount || 0;
-    document.getElementById("totalProducts").textContent = productsCount || 0;
+    allSalesData = data || [];
+    displaySales(allSalesData);
+    updateSalesCount(allSalesData.length);
   } catch (error) {
-    console.error("Error loading dashboard data:", error);
-    showError("فشل تحميل بيانات لوحة التحكم");
+    console.error("Error loading sales:", error);
+    showError("فشل تحميل سجل المبيعات");
   }
 }
 
-// تحميل الفروع
+// عرض المبيعات في الجدول
+function displaySales(data) {
+  const tbody = document.getElementById("recentSalesBody");
+
+  if (data.length === 0) {
+    tbody.innerHTML =
+      '<tr><td colspan="4" class="text-center text-muted py-4">لا توجد مبيعات</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data
+    .map(
+      (sale) => `
+        <tr>
+            <td>${new Date(sale.sale_date).toLocaleDateString("ar")}</td>
+            <td>${sale.branches?.name || "غير معروف"}</td>
+            <td>${sale.products?.name || "غير معروف"}</td>
+            <td><span class="badge bg-primary">${sale.quantity}</span></td>
+        </tr>
+      `,
+    )
+    .join("");
+}
+
+// تحديث عدد المبيعات
+function updateSalesCount(count) {
+  const badge = document.getElementById("salesCount");
+  if (badge) {
+    badge.textContent = count;
+  }
+}
+
+// تحميل الفروع (للفلاتر)
 async function loadBranches() {
   try {
     const { data, error } = await supabaseClient
@@ -91,7 +136,7 @@ async function loadBranches() {
   }
 }
 
-// تحميل المنتجات
+// تحميل المنتجات (للفلاتر)
 async function loadProducts() {
   try {
     const { data, error } = await supabaseClient
@@ -111,57 +156,6 @@ async function loadProducts() {
   }
 }
 
-async function loadRecentSales() {
-  try {
-    const { data, error } = await supabaseClient
-      .from("daily_sales")
-      .select(
-        `
-                *,
-                branches(name),
-                products(name)
-            `,
-      )
-      .eq("is_closed", true)
-      .order("created_at", { ascending: false })
-      .limit(10);
-
-    if (error) throw error;
-
-    const tbody = document.getElementById("recentSalesBody");
-    if (data.length === 0) {
-      tbody.innerHTML =
-        '<tr><td colspan="4" class="text-center text-muted">لا توجد مبيعات</td></tr>';
-      return;
-    }
-
-    tbody.innerHTML = data
-      .map(
-        (sale) => `
-            <tr>
-                <td>${new Date(sale.sale_date).toLocaleDateString("ar")}</td>
-                <td>${sale.branches?.name || "غير معروف"}</td>
-                <td>${sale.products?.name || "غير معروف"}</td>
-                <td>${sale.quantity}</td>
-            </tr>
-        `,
-      )
-      .join("");
-  } catch (error) {
-    console.error("Error loading recent sales:", error);
-  }
-}
-
-// تحميل إحصائيات إضافية
-async function loadAdditionalStats() {
-  try {
-    // التحقق من نقص المخزون
-    await showLowStockAlert();
-  } catch (error) {
-    console.error("Error loading additional stats:", error);
-  }
-}
-
 // تطبيق الفلاتر
 function applyFilters() {
   currentFilters = {
@@ -171,7 +165,9 @@ function applyFilters() {
     productId: document.getElementById("filterProduct").value,
   };
 
-  // تحديث الرسوم البيانية بناءً على الفلاتر
+  // تحديث سجل المبيعات
+  loadAllSales();
+  // تحديث الرسوم البيانية
   updateCharts();
 }
 
@@ -188,8 +184,40 @@ function resetFilters() {
     productId: "",
   };
 
-  // تحديث الرسوم البيانية
+  loadAllSales();
   updateCharts();
+}
+
+// تحميل بيانات لوحة التحكم
+async function loadDashboardData() {
+  try {
+    const { count: branchesCount, error: branchesError } = await supabaseClient
+      .from("branches")
+      .select("*", { count: "exact", head: true });
+
+    if (branchesError) throw branchesError;
+
+    const { count: productsCount, error: productsError } = await supabaseClient
+      .from("products")
+      .select("*", { count: "exact", head: true });
+
+    if (productsError) throw productsError;
+
+    document.getElementById("totalBranches").textContent = branchesCount || 0;
+    document.getElementById("totalProducts").textContent = productsCount || 0;
+  } catch (error) {
+    console.error("Error loading dashboard data:", error);
+    showError("فشل تحميل بيانات لوحة التحكم");
+  }
+}
+
+// تحميل إحصائيات إضافية
+async function loadAdditionalStats() {
+  try {
+    await showLowStockAlert();
+  } catch (error) {
+    console.error("Error loading additional stats:", error);
+  }
 }
 
 // تحديث الرسوم البيانية
@@ -297,6 +325,10 @@ function createBranchSalesChart(data) {
       scales: {
         y: {
           beginAtZero: true,
+          title: {
+            display: true,
+            text: "عدد القطع",
+          },
           ticks: {
             callback: function (value) {
               return value;
@@ -307,9 +339,9 @@ function createBranchSalesChart(data) {
     },
   });
 }
+
 // إنشاء رسم أفضل المنتجات
 function createTopProductsChart(data) {
-  // ترتيب المنتجات حسب الكمية
   const sorted = Object.entries(data)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
@@ -323,7 +355,6 @@ function createTopProductsChart(data) {
     topProductsChart.destroy();
   }
 
-  // ألوان مميزة
   const colors = [
     "rgba(231,76,60,0.8)",
     "rgba(52,152,219,0.8)",
@@ -368,3 +399,4 @@ function createTopProductsChart(data) {
 window.applyFilters = applyFilters;
 window.resetFilters = resetFilters;
 window.updateCharts = updateCharts;
+window.loadAllSales = loadAllSales;

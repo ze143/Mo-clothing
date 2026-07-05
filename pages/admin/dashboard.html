@@ -200,15 +200,24 @@
         </div>
       </div>
 
-      <!-- جدول المبيعات الأخيرة -->
+      <!-- سجل المبيعات -->
       <div class="card mt-4">
-        <div class="card-header">
-          <i class="fas fa-table me-2"></i>آخر المبيعات
+        <div
+          class="card-header d-flex justify-content-between align-items-center"
+        >
+          <span><i class="fas fa-table me-2"></i>سجل المبيعات</span>
+          <span class="badge bg-primary" id="salesCount">0</span>
         </div>
-        <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-hover" id="recentSalesTable">
-              <thead>
+        <div class="card-body p-0">
+          <div
+            class="table-responsive"
+            style="max-height: 400px; overflow-y: auto"
+          >
+            <table
+              class="table table-hover table-striped mb-0"
+              id="recentSalesTable"
+            >
+              <thead class="table-dark sticky-top">
                 <tr>
                   <th>التاريخ</th>
                   <th>الفرع</th>
@@ -218,8 +227,8 @@
               </thead>
               <tbody id="recentSalesBody">
                 <tr>
-                  <td colspan="4" class="text-center text-muted">
-                    لا توجد بيانات
+                  <td colspan="4" class="text-center text-muted py-4">
+                    <i class="fas fa-spinner fa-spin me-2"></i>جاري التحميل...
                   </td>
                 </tr>
               </tbody>
