@@ -1,59 +1,214 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>تدقيق المخزون - نظام MO</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../../assets/css/style.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="../../assets/css/style.css" />
+    <style>
+        .table-danger td {
+            background-color: #f8d7da !important;
+        }
+        
+        .table-warning td {
+            background-color: #fff3cd !important;
+        }
+        
+        .stats-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            height: 100%;
+            border-right: 4px solid #2c3e50;
+        }
+        
+        .stats-card .stats-number {
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .stats-card .stats-label {
+            color: #888;
+            font-size: 14px;
+        }
+        
+        .stats-card.danger {
+            border-right-color: #e74c3c;
+        }
+        
+        .stats-card.warning {
+            border-right-color: #f39c12;
+        }
+        
+        .stats-card.success {
+            border-right-color: #27ae60;
+        }
+        
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .table-container thead th {
+            position: sticky;
+            top: 0;
+            background: #fff;
+            z-index: 10;
+        }
+        
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 1060;
+            background: #1a1a2e;
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            cursor: pointer;
+        }
+        
+        @media (max-width: 992px) {
+            .sidebar {
+                transform: translateX(110%);
+                width: 280px;
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .menu-toggle {
+                display: block;
+            }
+            .main-content {
+                margin-right: 0;
+                padding: 16px;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .main-content {
+                padding: 10px;
+            }
+            .top-navbar {
+                flex-direction: column;
+                text-align: center;
+            }
+            .stats-card .stats-number {
+                font-size: 20px;
+            }
+        }
+    </style>
 </head>
 
 <body>
-    <!-- الشريط الجانبي -->
-    <div class="sidebar">
+    <button class="menu-toggle" id="menuToggle">
+      <i class="fas fa-bars"></i>
+    </button>
+
+    <div class="sidebar" id="sidebar">
         <div class="sidebar-brand">
             <h2>MO<span>.</span></h2>
             <small>لوحة التحكم</small>
         </div>
         <ul class="sidebar-menu">
-            <li><a href="dashboard.html"><i class="fas fa-chart-pie"></i><span>لوحة التحكم</span></a></li>
-            <li><a href="branches.html"><i class="fas fa-store"></i><span>الفروع</span></a></li>
-            <li><a href="products.html"><i class="fas fa-box"></i><span>المنتجات</span></a></li>
-            <li><a href="warehouse.html"><i class="fas fa-warehouse"></i><span>المخزن</span></a></li>
-            <li><a href="branch-transfers.html"><i class="fas fa-exchange-alt"></i><span>سجل التوريدات</span></a></li>
-            <li><a href="supplier-supplies.html"><i class="fas fa-cart-plus"></i><span>توريد للمخزن</span></a></li>
-            <li><a href="day-closing.html"><i class="fas fa-lock"></i><span>إقفال اليوم</span></a></li>
-            <li><a href="day-closing-reports.html"><i class="fas fa-file-alt"></i><span>تقارير الإقفال</span></a></li>
-            <li><a href="inventory.html"><i class="fas fa-clipboard-list"></i><span>الجرد</span></a></li>
-            <li><a href="inventory-reports.html"><i class="fas fa-file-alt"></i><span>تقارير الجرد</span></a></li>
-            <li class="active"><a href="stock-audit.html"><i class="fas fa-check-double"></i><span>تدقيق المخزون</span></a></li>
-            <li class="logout-item"><a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i><span>تسجيل الخروج</span></a></li>
-        </ul>
+            <li>
+                <a href="dashboard.html"><i class="fas fa-chart-pie"></i><span>لوحة التحكم</span></a
+          >
+        </li>
+        <li>
+          <a href="branches.html"
+            ><i class="fas fa-store"></i><span>الفروع</span></a
+          >
+        </li>
+        <li>
+          <a href="products.html"
+            ><i class="fas fa-box"></i><span>المنتجات</span></a
+          >
+        </li>
+        <li>
+          <a href="warehouse.html"
+            ><i class="fas fa-warehouse"></i><span>المخزن</span></a
+          >
+        </li>
+        <li>
+          <a href="branch-transfers.html"
+            ><i class="fas fa-exchange-alt"></i><span>سجل التوريدات</span></a
+          >
+        </li>
+        <li>
+          <a href="supplier-supplies.html"
+            ><i class="fas fa-cart-plus"></i><span>توريد للمخزن</span></a
+          >
+        </li>
+        <li>
+          <a href="day-closing.html"
+            ><i class="fas fa-lock"></i><span>إقفال اليوم</span></a
+          >
+        </li>
+        <li>
+          <a href="day-closing-reports.html"
+            ><i class="fas fa-file-alt"></i><span>تقارير الإقفال</span></a
+          >
+        </li>
+        <li>
+          <a href="inventory.html"
+            ><i class="fas fa-clipboard-list"></i><span>الجرد</span></a
+          >
+        </li>
+        <li>
+          <a href="inventory-reports.html"
+            ><i class="fas fa-file-alt"></i><span>تقارير الجرد</span></a
+          >
+        </li>
+        <li class="active">
+          <a href="stock-audit.html"
+            ><i class="fas fa-check-double"></i><span>تدقيق المخزون</span></a
+          >
+        </li>
+        <li class="logout-item">
+          <a href="#" onclick="logout()"
+            ><i class="fas fa-sign-out-alt"></i><span>تسجيل الخروج</span></a
+          >
+        </li>
+      </ul>
     </div>
 
     <div class="main-content">
-        <nav class="top-navbar">
-            <div>
-                <h4 class="mb-0"><i class="fas fa-check-double me-2"></i>تدقيق المخزون</h4>
-            </div>
-            <div class="user-info">
-                <div class="avatar" id="userAvatar">A</div>
-                <span id="userName">أدمن</span>
-            </div>
-        </nav>
-
-        <div class="alert alert-warning">
-            <i class="fas fa-exclamation-triangle me-2"></i> هذا التقرير يعرض الفروقات بين المخزون المتوقع والفعلي.
-            <strong>الأرقام الحمراء</strong> تعني وجود مشكلة تحتاج تدخل.
+      <nav class="top-navbar">
+        <div>
+          <h4 class="mb-0">
+            <i class="fas fa-check-double me-2"></i>تدقيق المخزون
+          </h4>
+          <small class="text-muted"
+            >🔍 مراجعة الفروقات بين المخزون المتوقع والفعلي</small
+          >
         </div>
-
-        <div id="auditResults">
-            <div class="text-center text-muted py-4">
-                <i class="fas fa-spinner fa-spin fa-2x mb-2 d-block"></i> جاري تحميل بيانات التدقيق...
-            </div>
+        <div class="user-info">
+          <div class="avatar" id="userAvatar">A</div>
+          <span id="userName">أدمن</span>
         </div>
+      </nav>
+
+      <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i> هذا التقرير يعرض
+        الفروقات بين المخزون المتوقع والفعلي.
+        <strong>الأرقام الحمراء</strong> تعني وجود مشكلة تحتاج تدخل.
+      </div>
+
+      <div id="auditResults">
+        <div class="text-center text-muted py-4">
+          <i class="fas fa-spinner fa-spin fa-2x mb-2 d-block"></i> جاري تحميل
+          بيانات التدقيق...
+        </div>
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -61,6 +216,26 @@
     <script src="../../assets/js/config.js"></script>
     <script src="../../assets/js/auth.js"></script>
     <script src="../../assets/js/admin/stock-audit.js"></script>
-</body>
 
+    <script>
+      document
+        .getElementById("menuToggle")
+        .addEventListener("click", function (e) {
+          e.stopPropagation();
+          document.getElementById("sidebar").classList.toggle("open");
+        });
+      document.addEventListener("click", function (e) {
+        var sidebar = document.getElementById("sidebar");
+        var toggle = document.getElementById("menuToggle");
+        if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
+          sidebar.classList.remove("open");
+        }
+      });
+      document.querySelectorAll(".sidebar-menu a").forEach(function (link) {
+        link.addEventListener("click", function () {
+          document.getElementById("sidebar").classList.remove("open");
+        });
+      });
+    </script>
+  </body>
 </html>

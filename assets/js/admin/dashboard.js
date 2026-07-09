@@ -254,8 +254,8 @@ async function updateCharts() {
         const productSales = {};
 
         data.forEach((sale) => {
-            const branchName = sale.branches ? .name || "غير معروف";
-            const productName = sale.products ? .name || "غير معروف";
+            const branchName = (sale.branches && sale.branches.name) || "غير معروف";
+            const productName = (sale.products && sale.products.name) || "غير معروف";
 
             branchSales[branchName] = (branchSales[branchName] || 0) + sale.quantity;
             productSales[productName] =

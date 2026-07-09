@@ -1,28 +1,43 @@
+// =============================================
+// تدقيق المخزون - فحص الفروقات
+// =============================================
+
 document.addEventListener("DOMContentLoaded", async function() {
-    const user = await checkAuthAndRedirect();
-    if (!user || user.profile.role !== "admin") {
-        window.location.href = "/pages/login.html";
-        return;
+    try {
+        const user = await checkAuthAndRedirect();
+        if (!user || user.profile.role !== "admin") {
+            window.location.href = "/pages/login.html";
+            return;
+        }
+
+        document.getElementById("userAvatar").textContent = user.profile.full_name ? user.profile.full_name.charAt(0).toUpperCase() : "A";
+        document.getElementById("userName").textContent = user.profile.full_name || "أدمن";
+
+        await loadAudit();
+    } catch (error) {
+        console.error("Error initializing:", error);
+        showError("حدث خطأ في تحميل الصفحة");
     }
-
-    document.getElementById("userAvatar").textContent = user.profile.full_name ? user.profile.full_name.charAt(0).toUpperCase() : "A";
-    document.getElementById("userName").textContent = user.profile.full_name || "أدمن";
-
-    await loadAudit();
 });
 
 async function loadAudit() {
     try {
         const container = document.getElementById("auditResults");
 
-        // 1. جلب الفروع والمنتجات
+        // جلب البيانات
         const branches = await supabaseClient.from("branches").select("*");
         const products = await supabaseClient.from("products").select("*");
         const transfers = await supabaseClient.from("branch_transfers").select("*");
         const sales = await supabaseClient.from("daily_sales").select("*");
         const stock = await supabaseClient.from("branch_stock").select("*");
 
-        // 2. حساب الفروقات
+        if (branches.error) throw branches.error;
+        if (products.error) throw products.error;
+        if (transfers.error) throw transfers.error;
+        if (sales.error) throw sales.error;
+        if (stock.error) throw stock.error;
+
+        // حساب الفروقات
         let auditData = [];
         let totalErrors = 0;
         let totalMissing = 0;
@@ -57,7 +72,8 @@ async function loadAudit() {
                         expected: expectedStock,
                         actual: actualStock,
                         difference: difference,
-                        status: difference === 0 ? '✅ مضبوط' : difference > 0 ? '❌ ناقص' : '⚠️ زائد'
+                        status: difference === 0 ? 'مضبوط ✅' : difference > 0 ? 'ناقص ❌' : 'زائد ⚠️',
+                        isError: difference !== 0
                     });
 
                     if (difference !== 0) {
@@ -69,7 +85,7 @@ async function loadAudit() {
             }
         }
 
-        // 3. عرض النتيجة
+        // عرض النتيجة
         let html = `
             <div class="row g-4 mb-4">
                 <div class="col-md-4">
@@ -107,14 +123,14 @@ async function loadAudit() {
                     </thead>
                     <tbody>
                         ${auditData.map(item => `
-                            <tr class="${item.difference !== 0 ? 'table-danger' : ''}">
+                            <tr class="${item.isError ? 'table-danger' : ''}">
                                 <td>${item.branch}</td>
                                 <td>${item.product}</td>
                                 <td>${item.supplied}</td>
                                 <td>${item.sold}</td>
                                 <td>${item.expected}</td>
                                 <td>${item.actual}</td>
-                                <td>${item.difference}</td>
+                                <td><strong>${item.difference}</strong></td>
                                 <td>${item.status}</td>
                             </tr>
                         `).join('')}
