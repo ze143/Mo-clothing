@@ -95,7 +95,6 @@ async function loadBranchClosingData() {
 // =============================================
 // دوال إقفال اليوم
 // =============================================
-
 async function closeDayWithStatus(status = "completed") {
     if (!currentBranchId) {
         alert("يرجى اختيار فرع");
@@ -107,7 +106,7 @@ async function closeDayWithStatus(status = "completed") {
     }
 
     try {
-        // 1. جلب المبيعات
+        // 1. جلب المبيعات غير المقفلة
         const { data: salesData, error: salesError } = await supabaseClient
             .from("daily_sales")
             .select(
@@ -130,11 +129,7 @@ async function closeDayWithStatus(status = "completed") {
 
         // 3. حفظ تقرير الإقفال
         const { data: userData } = await supabaseClient.auth.getUser();
-        // ✅ التعديل هنا
-        var userId = null;
-        if (userData && userData.user && userData.user.id) {
-            userId = userData.user.id;
-        }
+        var userId = (userData && userData.user && userData.user.id) || null;
 
         const { error: closingError } = await supabaseClient
             .from("day_closing")
@@ -149,7 +144,9 @@ async function closeDayWithStatus(status = "completed") {
 
         if (closingError) throw closingError;
 
-        // 4. خصم المخزون من الفرع
+        // =============================================
+        // 4. خصم المخزون من الفرع (مرة واحدة فقط)
+        // =============================================
         for (var i = 0; i < salesData.length; i++) {
             var sale = salesData[i];
 

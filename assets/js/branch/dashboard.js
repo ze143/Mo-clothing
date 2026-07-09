@@ -148,6 +148,7 @@ function displayTodaySales() {
 
 async function handleAddSale(e) {
     e.preventDefault();
+    e.stopPropagation();
 
     const productId = document.getElementById("salesProduct").value;
     const quantity = parseInt(document.getElementById("salesQuantity").value);
@@ -166,13 +167,12 @@ async function handleAddSale(e) {
                 product_id: productId,
                 quantity: quantity,
                 sale_date: todayDate,
-                is_closed: false // لم تقفل بعد
+                is_closed: false, // لم تقفل بعد
             })
             .select();
 
         if (error) throw error;
 
-        // ✅ إعادة تحميل البيانات (من غير تحديث المخزون)
         await loadTodaySales();
         await loadBranchStock();
         await updateStatistics();
