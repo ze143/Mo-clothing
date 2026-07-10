@@ -37,8 +37,6 @@ document.addEventListener("DOMContentLoaded", async function() {
     // تحميل مبيعات اليوم
     await loadTodaySales();
 
-    // تحميل مخزون الفرع
-    await loadBranchStock();
 
     // تحديث الإحصائيات
     await updateStatistics();
@@ -159,7 +157,7 @@ async function handleAddSale(e) {
     }
 
     try {
-        // ✅ إضافة المبيعات (من غير خصم المخزون)
+        // ✅ إضافة المبيعات فقط (من غير خصم المخزون)
         const { data, error } = await supabaseClient
             .from("daily_sales")
             .insert({
@@ -167,22 +165,21 @@ async function handleAddSale(e) {
                 product_id: productId,
                 quantity: quantity,
                 sale_date: todayDate,
-                is_closed: false, // لم تقفل بعد
+                is_closed: false,
             })
             .select();
 
         if (error) throw error;
 
         await loadTodaySales();
-        await loadBranchStock();
         await updateStatistics();
 
         document.getElementById("dailySalesForm").reset();
 
-        showSalesMessage("تم إضافة المبيعات بنجاح", "success");
+        showSalesMessage("✅ تم إضافة المبيعات بنجاح", "success");
     } catch (error) {
         console.error("Error adding sale:", error);
-        showSalesMessage("فشل إضافة المبيعات: " + error.message, "danger");
+        showSalesMessage("❌ فشل إضافة المبيعات: " + error.message, "danger");
     }
 }
 
@@ -226,7 +223,6 @@ async function deleteSale(saleId) {
 
         // إعادة تحميل البيانات
         await loadTodaySales();
-        await loadBranchStock();
         await updateStatistics();
 
         showSalesMessage("تم حذف المبيعات بنجاح", "success");
