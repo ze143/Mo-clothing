@@ -155,7 +155,10 @@ async function closeDayWithStatus(status = "completed") {
         // 1. جلب المبيعات غير المقفلة
         const { data: salesData, error: salesError } = await supabaseClient
             .from("daily_sales")
-            .select(`*`)
+            .select(`
+                *,
+                products(price)
+            `)
             .eq("branch_id", currentBranchId)
             .eq("sale_date", todayDate)
             .eq("is_closed", false);
@@ -186,8 +189,34 @@ async function closeDayWithStatus(status = "completed") {
         if (closingError) throw closingError;
 
         // =============================================
-        // 4. ✅ فقط تحديث حالة المبيعات (دون تعديل المخزون)
+        // 4. خصم المخزون (مرة واحدة فقط)
         // =============================================
+        for (var i = 0; i < salesData.length; i++) {
+            var sale = salesData[i];
+
+            var stockResult = await supabaseClient
+                .from("branch_stock")
+                .select("quantity")
+                .eq("branch_id", currentBranchId)
+                .eq("product_id", sale.product_id)
+                .single();
+
+            var stockData = stockResult.data;
+
+            if (stockData) {
+                var newQuantity = Math.max(0, (stockData.quantity || 0) - sale.quantity);
+                await supabaseClient
+                    .from("branch_stock")
+                    .update({
+                        quantity: newQuantity,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq("branch_id", currentBranchId)
+                    .eq("product_id", sale.product_id);
+            }
+        }
+
+        // 5. تحديث المبيعات بأنها مقفلة
         const { error: updateError } = await supabaseClient
             .from("daily_sales")
             .update({ is_closed: true })
@@ -197,11 +226,12 @@ async function closeDayWithStatus(status = "completed") {
 
         if (updateError) throw updateError;
 
-        // 5. تحديث جميع الصفحات المفتوحة
+        // 6. تحديث جميع الصفحات المفتوحة
         localStorage.setItem("stockUpdated", Date.now());
 
-        showSuccess("✅ تم إقفال اليوم بنجاح (المخزون تم خصمه مسبقاً)");
+        showSuccess("✅ تم إقفال اليوم وخصم المخزون بنجاح");
         await loadBranchClosingData();
+
     } catch (error) {
         console.error("Error closing day:", error);
         alert("فشل إقفال اليوم: " + error.message);
