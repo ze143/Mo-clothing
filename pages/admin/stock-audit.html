@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 
 <head>
@@ -242,8 +242,9 @@
 </head>
 
 <body>
-
-    <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+    <button class="menu-toggle" id="menuToggle">
+      <i class="fas fa-bars"></i>
+    </button>
 
     <div class="sidebar" id="sidebar">
         <div class="sidebar-brand">
@@ -251,39 +252,93 @@
             <small>لوحة التحكم</small>
         </div>
         <ul class="sidebar-menu">
-            <li><a href="dashboard.html"><i class="fas fa-chart-pie"></i><span>لوحة التحكم</span></a></li>
-            <li><a href="branches.html"><i class="fas fa-store"></i><span>الفروع</span></a></li>
-            <li><a href="products.html"><i class="fas fa-box"></i><span>المنتجات</span></a></li>
-            <li><a href="warehouse.html"><i class="fas fa-warehouse"></i><span>المخزن</span></a></li>
-            <li><a href="branch-transfers.html"><i class="fas fa-exchange-alt"></i><span>سجل التوريدات</span></a></li>
-            <li><a href="supplier-supplies.html"><i class="fas fa-cart-plus"></i><span>توريد للمخزن</span></a></li>
-            <li><a href="day-closing.html"><i class="fas fa-lock"></i><span>إقفال اليوم</span></a></li>
-            <li><a href="day-closing-reports.html"><i class="fas fa-file-alt"></i><span>تقارير الإقفال</span></a></li>
-            <li><a href="inventory.html"><i class="fas fa-clipboard-list"></i><span>الجرد</span></a></li>
-            <li><a href="inventory-reports.html"><i class="fas fa-file-alt"></i><span>تقارير الجرد</span></a></li>
-            <li class="active"><a href="stock-audit-full.html"><i class="fas fa-check-double"></i><span>تدقيق شامل</span></a></li>
-            <li class="logout-item"><a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i><span>تسجيل الخروج</span></a></li>
-        </ul>
+            <li>
+                <a href="dashboard.html"><i class="fas fa-chart-pie"></i><span>لوحة التحكم</span></a
+          >
+        </li>
+        <li>
+          <a href="branches.html"
+            ><i class="fas fa-store"></i><span>الفروع</span></a
+          >
+        </li>
+        <li>
+          <a href="branch-report.html"
+            ><i class="fas fa-chart-bar"></i><span>تقرير الفروع</span></a
+          >
+        </li>
+        <li>
+          <a href="products.html"
+            ><i class="fas fa-box"></i><span>المنتجات</span></a
+          >
+        </li>
+        <li>
+          <a href="warehouse.html"
+            ><i class="fas fa-warehouse"></i><span>المخزن</span></a
+          >
+        </li>
+        <li>
+          <a href="branch-transfers.html"
+            ><i class="fas fa-exchange-alt"></i><span>سجل التوريدات</span></a
+          >
+        </li>
+        <li>
+          <a href="supplier-supplies.html"
+            ><i class="fas fa-cart-plus"></i><span>توريد للمخزن</span></a
+          >
+        </li>
+        <li>
+          <a href="day-closing.html"
+            ><i class="fas fa-lock"></i><span>إقفال اليوم</span></a
+          >
+        </li>
+        <li>
+          <a href="day-closing-reports.html"
+            ><i class="fas fa-file-alt"></i><span>تقارير الإقفال</span></a
+          >
+        </li>
+        <li>
+          <a href="inventory.html"
+            ><i class="fas fa-clipboard-list"></i><span>الجرد</span></a
+          >
+        </li>
+        <li>
+          <a href="inventory-reports.html"
+            ><i class="fas fa-file-alt"></i><span>تقارير الجرد</span></a
+          >
+        </li>
+        <li class="active">
+          <a href="stock-audit.html"
+            ><i class="fas fa-check-double"></i><span>تدقيق المخزون</span></a
+          >
+        </li>
+        <li class="logout-item">
+          <a href="#" onclick="logout()"
+            ><i class="fas fa-sign-out-alt"></i><span>تسجيل الخروج</span></a
+          >
+        </li>
+      </ul>
     </div>
 
     <div class="main-content">
-        <nav class="top-navbar">
-            <div>
-                <h4 class="mb-0"><i class="fas fa-check-double me-2"></i>تدقيق المخزون الشامل</h4>
-                <small class="text-muted">📊 فحص كامل لجميع الفروقات</small>
-            </div>
-            <div class="user-info">
-                <div class="avatar" id="userAvatar">A</div>
-                <span id="userName">أدمن</span>
-            </div>
-        </nav>
-
-        <div id="auditContent">
-            <div class="text-center text-muted py-5">
-                <i class="fas fa-spinner fa-spin fa-3x mb-3 d-block"></i>
-                <h5>جاري تحميل بيانات التدقيق...</h5>
-            </div>
+      <nav class="top-navbar">
+        <div>
+          <h4 class="mb-0">
+            <i class="fas fa-check-double me-2"></i>تدقيق المخزون الشامل
+          </h4>
+          <small class="text-muted">📊 فحص كامل لجميع الفروقات</small>
         </div>
+        <div class="user-info">
+          <div class="avatar" id="userAvatar">A</div>
+          <span id="userName">أدمن</span>
+        </div>
+      </nav>
+
+      <div id="auditContent">
+        <div class="text-center text-muted py-5">
+          <i class="fas fa-spinner fa-spin fa-3x mb-3 d-block"></i>
+          <h5>جاري تحميل بيانات التدقيق...</h5>
+        </div>
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -291,138 +346,196 @@
     <script src="../../assets/js/config.js"></script>
     <script src="../../assets/js/auth.js"></script>
     <script>
-        // =============================================
-        // تدقيق المخزون الشامل - صفحة كاملة
-        // =============================================
+      // =============================================
+      // تدقيق المخزون الشامل - صفحة كاملة
+      // =============================================
 
-        document.addEventListener("DOMContentLoaded", async function() {
-            try {
-                const user = await checkAuthAndRedirect();
-                if (!user || user.profile.role !== "admin") {
-                    window.location.href = "/pages/login.html";
-                    return;
+      document.addEventListener("DOMContentLoaded", async function () {
+        try {
+          const user = await checkAuthAndRedirect();
+          if (!user || user.profile.role !== "admin") {
+            window.location.href = "/pages/login.html";
+            return;
+          }
+
+          document.getElementById("userAvatar").textContent = user.profile
+            .full_name
+            ? user.profile.full_name.charAt(0).toUpperCase()
+            : "A";
+          document.getElementById("userName").textContent =
+            user.profile.full_name || "أدمن";
+
+          await loadFullAudit();
+        } catch (error) {
+          console.error("Error initializing:", error);
+          showError("حدث خطأ في تحميل الصفحة");
+        }
+      });
+
+      async function loadFullAudit() {
+        try {
+          const container = document.getElementById("auditContent");
+
+          // جلب جميع البيانات
+          const [branchesRes, productsRes, transfersRes, salesRes, stockRes] =
+            await Promise.all([
+              supabaseClient.from("branches").select("*"),
+              supabaseClient.from("products").select("*"),
+              supabaseClient.from("branch_transfers").select("*"),
+              supabaseClient.from("daily_sales").select("*"),
+              supabaseClient.from("branch_stock").select("*"),
+            ]);
+
+          if (branchesRes.error) throw branchesRes.error;
+          if (productsRes.error) throw productsRes.error;
+          if (transfersRes.error) throw transfersRes.error;
+          if (salesRes.error) throw salesRes.error;
+          if (stockRes.error) throw stockRes.error;
+
+          const branches = branchesRes.data;
+          const products = productsRes.data;
+          const transfers = transfersRes.data;
+          const sales = salesRes.data;
+          const stock = stockRes.data;
+
+          // حساب الفروقات
+          let auditData = [];
+          let totalErrors = 0;
+          let totalMissing = 0;
+          let totalExtra = 0;
+          let duplicateSupplies = 0;
+          let duplicateSales = 0;
+
+          // حساب التوريدات المكررة
+          const supplyGroups = {};
+          transfers
+            .filter((t) => t.transfer_type === "supply")
+            .forEach((t) => {
+              const key =
+                t.to_branch_id +
+                "|" +
+                t.product_id +
+                "|" +
+                t.created_at.split("T")[0];
+              supplyGroups[key] = (supplyGroups[key] || 0) + 1;
+            });
+          duplicateSupplies = Object.values(supplyGroups).filter(
+            (v) => v > 1,
+          ).length;
+
+          // حساب المبيعات المكررة
+          const salesGroups = {};
+          sales
+            .filter((s) => s.is_closed === true)
+            .forEach((s) => {
+              const key = s.branch_id + "|" + s.product_id + "|" + s.sale_date;
+              salesGroups[key] = (salesGroups[key] || 0) + 1;
+            });
+          duplicateSales = Object.values(salesGroups).filter(
+            (v) => v > 1,
+          ).length;
+
+          // حساب الفروقات لكل فرع ومنتج
+          for (const branch of branches) {
+            for (const product of products) {
+              const totalSupplied = transfers
+                .filter(
+                  (t) =>
+                    t.to_branch_id === branch.id &&
+                    t.product_id === product.id &&
+                    t.transfer_type === "supply",
+                )
+                .reduce((sum, t) => sum + t.quantity, 0);
+
+              const totalSold = sales
+                .filter(
+                  (s) =>
+                    s.branch_id === branch.id &&
+                    s.product_id === product.id &&
+                    s.is_closed === true,
+                )
+                .reduce((sum, s) => sum + s.quantity, 0);
+
+              const totalReturned = transfers
+                .filter(
+                  (t) =>
+                    t.from_branch_id === branch.id &&
+                    t.product_id === product.id &&
+                    t.transfer_type === "return",
+                )
+                .reduce((sum, t) => sum + t.quantity, 0);
+
+              const totalTransferredOut = transfers
+                .filter(
+                  (t) =>
+                    t.from_branch_id === branch.id &&
+                    t.product_id === product.id &&
+                    t.transfer_type === "transfer",
+                )
+                .reduce((sum, t) => sum + t.quantity, 0);
+
+              const totalTransferredIn = transfers
+                .filter(
+                  (t) =>
+                    t.to_branch_id === branch.id &&
+                    t.product_id === product.id &&
+                    t.transfer_type === "transfer",
+                )
+                .reduce((sum, t) => sum + t.quantity, 0);
+
+              const actualStock = stock
+                .filter(
+                  (s) =>
+                    s.branch_id === branch.id && s.product_id === product.id,
+                )
+                .reduce((sum, s) => sum + s.quantity, 0);
+
+              const expectedStock =
+                totalSupplied -
+                totalSold -
+                totalReturned -
+                totalTransferredOut +
+                totalTransferredIn;
+              const difference = expectedStock - actualStock;
+
+              if (
+                totalSupplied > 0 ||
+                totalSold > 0 ||
+                totalReturned > 0 ||
+                totalTransferredOut > 0 ||
+                totalTransferredIn > 0 ||
+                actualStock > 0
+              ) {
+                if (difference !== 0) {
+                  auditData.push({
+                    branch: branch.name,
+                    product: product.name,
+                    supplied: totalSupplied,
+                    sold: totalSold,
+                    returned: totalReturned,
+                    transferredOut: totalTransferredOut,
+                    transferredIn: totalTransferredIn,
+                    expected: expectedStock,
+                    actual: actualStock,
+                    difference: difference,
+                    status: difference > 0 ? "ناقص ❌" : "زائد ⚠️",
+                  });
+                  totalErrors++;
+                  if (difference > 0) totalMissing += difference;
+                  else totalExtra += Math.abs(difference);
                 }
-
-                document.getElementById("userAvatar").textContent = user.profile.full_name ? user.profile.full_name.charAt(0).toUpperCase() : "A";
-                document.getElementById("userName").textContent = user.profile.full_name || "أدمن";
-
-                await loadFullAudit();
-            } catch (error) {
-                console.error("Error initializing:", error);
-                showError("حدث خطأ في تحميل الصفحة");
+              }
             }
-        });
+          }
 
-        async function loadFullAudit() {
-            try {
-                const container = document.getElementById("auditContent");
+          // بناء الـ HTML
+          let html = "";
 
-                // جلب جميع البيانات
-                const [branchesRes, productsRes, transfersRes, salesRes, stockRes] = await Promise.all([
-                    supabaseClient.from("branches").select("*"),
-                    supabaseClient.from("products").select("*"),
-                    supabaseClient.from("branch_transfers").select("*"),
-                    supabaseClient.from("daily_sales").select("*"),
-                    supabaseClient.from("branch_stock").select("*")
-                ]);
-
-                if (branchesRes.error) throw branchesRes.error;
-                if (productsRes.error) throw productsRes.error;
-                if (transfersRes.error) throw transfersRes.error;
-                if (salesRes.error) throw salesRes.error;
-                if (stockRes.error) throw stockRes.error;
-
-                const branches = branchesRes.data;
-                const products = productsRes.data;
-                const transfers = transfersRes.data;
-                const sales = salesRes.data;
-                const stock = stockRes.data;
-
-                // حساب الفروقات
-                let auditData = [];
-                let totalErrors = 0;
-                let totalMissing = 0;
-                let totalExtra = 0;
-                let duplicateSupplies = 0;
-                let duplicateSales = 0;
-
-                // حساب التوريدات المكررة
-                const supplyGroups = {};
-                transfers.filter(t => t.transfer_type === 'supply').forEach(t => {
-                    const key = t.to_branch_id + '|' + t.product_id + '|' + t.created_at.split('T')[0];
-                    supplyGroups[key] = (supplyGroups[key] || 0) + 1;
-                });
-                duplicateSupplies = Object.values(supplyGroups).filter(v => v > 1).length;
-
-                // حساب المبيعات المكررة
-                const salesGroups = {};
-                sales.filter(s => s.is_closed === true).forEach(s => {
-                    const key = s.branch_id + '|' + s.product_id + '|' + s.sale_date;
-                    salesGroups[key] = (salesGroups[key] || 0) + 1;
-                });
-                duplicateSales = Object.values(salesGroups).filter(v => v > 1).length;
-
-                // حساب الفروقات لكل فرع ومنتج
-                for (const branch of branches) {
-                    for (const product of products) {
-                        const totalSupplied = transfers
-                            .filter(t => t.to_branch_id === branch.id && t.product_id === product.id && t.transfer_type === 'supply')
-                            .reduce((sum, t) => sum + t.quantity, 0);
-
-                        const totalSold = sales
-                            .filter(s => s.branch_id === branch.id && s.product_id === product.id && s.is_closed === true)
-                            .reduce((sum, s) => sum + s.quantity, 0);
-
-                        const totalReturned = transfers
-                            .filter(t => t.from_branch_id === branch.id && t.product_id === product.id && t.transfer_type === 'return')
-                            .reduce((sum, t) => sum + t.quantity, 0);
-
-                        const totalTransferredOut = transfers
-                            .filter(t => t.from_branch_id === branch.id && t.product_id === product.id && t.transfer_type === 'transfer')
-                            .reduce((sum, t) => sum + t.quantity, 0);
-
-                        const totalTransferredIn = transfers
-                            .filter(t => t.to_branch_id === branch.id && t.product_id === product.id && t.transfer_type === 'transfer')
-                            .reduce((sum, t) => sum + t.quantity, 0);
-
-                        const actualStock = stock
-                            .filter(s => s.branch_id === branch.id && s.product_id === product.id)
-                            .reduce((sum, s) => sum + s.quantity, 0);
-
-                        const expectedStock = totalSupplied - totalSold - totalReturned - totalTransferredOut + totalTransferredIn;
-                        const difference = expectedStock - actualStock;
-
-                        if (totalSupplied > 0 || totalSold > 0 || totalReturned > 0 || totalTransferredOut > 0 || totalTransferredIn > 0 || actualStock > 0) {
-                            if (difference !== 0) {
-                                auditData.push({
-                                    branch: branch.name,
-                                    product: product.name,
-                                    supplied: totalSupplied,
-                                    sold: totalSold,
-                                    returned: totalReturned,
-                                    transferredOut: totalTransferredOut,
-                                    transferredIn: totalTransferredIn,
-                                    expected: expectedStock,
-                                    actual: actualStock,
-                                    difference: difference,
-                                    status: difference > 0 ? 'ناقص ❌' : 'زائد ⚠️'
-                                });
-                                totalErrors++;
-                                if (difference > 0) totalMissing += difference;
-                                else totalExtra += Math.abs(difference);
-                            }
-                        }
-                    }
-                }
-
-                // بناء الـ HTML
-                let html = '';
-
-                // 1. ملخص سريع
-                html += `
+          // 1. ملخص سريع
+          html += `
                     <div class="row g-4 mb-4">
                         <div class="col-md-3 col-6">
-                            <div class="stats-card ${totalErrors > 0 ? 'danger' : 'success'}">
+                            <div class="stats-card ${totalErrors > 0 ? "danger" : "success"}">
                                 <div class="stats-number">${totalErrors}</div>
                                 <div class="stats-label">منتجات بها مشكلة</div>
                             </div>
@@ -440,7 +553,7 @@
                             </div>
                         </div>
                         <div class="col-md-3 col-6">
-                            <div class="stats-card ${(duplicateSupplies > 0 || duplicateSales > 0) ? 'danger' : 'success'}">
+                            <div class="stats-card ${duplicateSupplies > 0 || duplicateSales > 0 ? "danger" : "success"}">
                                 <div class="stats-number">${duplicateSupplies + duplicateSales}</div>
                                 <div class="stats-label">عمليات مكررة</div>
                             </div>
@@ -448,17 +561,17 @@
                     </div>
                 `;
 
-                // 2. الفروقات
-                if (auditData.length === 0) {
-                    html += `
+          // 2. الفروقات
+          if (auditData.length === 0) {
+            html += `
                         <div class="alert alert-success text-center py-4">
                             <i class="fas fa-check-circle fa-2x mb-2 d-block"></i>
                             <h5>🎉 جميع المنتجات مضبوطة</h5>
                             <p class="text-muted">لا توجد فروقات في المخزون</p>
                         </div>
                     `;
-                } else {
-                    html += `
+          } else {
+            html += `
                         <div class="section-title">
                             <i class="fas fa-exclamation-triangle text-danger me-2"></i>
                             <strong>الفروقات</strong>
@@ -482,7 +595,9 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${auditData.map(item => `
+                                    ${auditData
+                                      .map(
+                                        (item) => `
                                         <tr class="table-danger">
                                             <td>${item.branch}</td>
                                             <td>${item.product}</td>
@@ -496,16 +611,18 @@
                                             <td><strong>${item.difference}</strong></td>
                                             <td>${item.status}</td>
                                         </tr>
-                                    `).join('')}
+                                    `,
+                                      )
+                                      .join("")}
                                 </tbody>
                             </table>
                         </div>
                     `;
-                }
+          }
 
-                // 3. العمليات المكررة
-                if (duplicateSupplies > 0 || duplicateSales > 0) {
-                    html += `
+          // 3. العمليات المكررة
+          if (duplicateSupplies > 0 || duplicateSales > 0) {
+            html += `
                         <div class="section-title mt-4">
                             <i class="fas fa-copy text-warning me-2"></i>
                             <strong>العمليات المكررة</strong>
@@ -515,16 +632,24 @@
                             يوجد <strong>${duplicateSupplies}</strong> توريد مكرر و <strong>${duplicateSales}</strong> مبيعات مكررة
                         </div>
                     `;
-                }
+          }
 
-                // 4. الأرقام الإجمالية
-                const totalSupplied = transfers.filter(t => t.transfer_type === 'supply').reduce((sum, t) => sum + t.quantity, 0);
-                const totalSold = sales.filter(s => s.is_closed === true).reduce((sum, s) => sum + s.quantity, 0);
-                const totalReturned = transfers.filter(t => t.transfer_type === 'return').reduce((sum, t) => sum + t.quantity, 0);
-                const totalTransferred = transfers.filter(t => t.transfer_type === 'transfer').reduce((sum, t) => sum + t.quantity, 0);
-                const totalStock = stock.reduce((sum, s) => sum + s.quantity, 0);
+          // 4. الأرقام الإجمالية
+          const totalSupplied = transfers
+            .filter((t) => t.transfer_type === "supply")
+            .reduce((sum, t) => sum + t.quantity, 0);
+          const totalSold = sales
+            .filter((s) => s.is_closed === true)
+            .reduce((sum, s) => sum + s.quantity, 0);
+          const totalReturned = transfers
+            .filter((t) => t.transfer_type === "return")
+            .reduce((sum, t) => sum + t.quantity, 0);
+          const totalTransferred = transfers
+            .filter((t) => t.transfer_type === "transfer")
+            .reduce((sum, t) => sum + t.quantity, 0);
+          const totalStock = stock.reduce((sum, s) => sum + s.quantity, 0);
 
-                html += `
+          html += `
                     <div class="section-title mt-4">
                         <i class="fas fa-chart-bar text-primary me-2"></i>
                         <strong>الأرقام الإجمالية</strong>
@@ -563,39 +688,39 @@
                     </div>
                 `;
 
-                container.innerHTML = html;
-
-            } catch (error) {
-                console.error("Error loading audit:", error);
-                document.getElementById("auditContent").innerHTML = `
+          container.innerHTML = html;
+        } catch (error) {
+          console.error("Error loading audit:", error);
+          document.getElementById("auditContent").innerHTML = `
                     <div class="alert alert-danger">
                         <i class="fas fa-exclamation-circle me-2"></i>
                         فشل تحميل بيانات التدقيق: ${error.message}
                     </div>
                 `;
-            }
         }
+      }
 
-        // فتح/غلق القائمة
-        document.getElementById('menuToggle').addEventListener('click', function(e) {
-            e.stopPropagation();
-            document.getElementById('sidebar').classList.toggle('open');
+      // فتح/غلق القائمة
+      document
+        .getElementById("menuToggle")
+        .addEventListener("click", function (e) {
+          e.stopPropagation();
+          document.getElementById("sidebar").classList.toggle("open");
         });
 
-        document.addEventListener('click', function(e) {
-            var sidebar = document.getElementById('sidebar');
-            var toggle = document.getElementById('menuToggle');
-            if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
-                sidebar.classList.remove('open');
-            }
-        });
+      document.addEventListener("click", function (e) {
+        var sidebar = document.getElementById("sidebar");
+        var toggle = document.getElementById("menuToggle");
+        if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
+          sidebar.classList.remove("open");
+        }
+      });
 
-        document.querySelectorAll('.sidebar-menu a').forEach(function(link) {
-            link.addEventListener('click', function() {
-                document.getElementById('sidebar').classList.remove('open');
-            });
+      document.querySelectorAll(".sidebar-menu a").forEach(function (link) {
+        link.addEventListener("click", function () {
+          document.getElementById("sidebar").classList.remove("open");
         });
+      });
     </script>
-</body>
-
+  </body>
 </html>
