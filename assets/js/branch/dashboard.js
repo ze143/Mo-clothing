@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", async function() {
 
     // تحميل مبيعات اليوم
     await loadTodaySales();
-
+    await loadBranchStock(); // ✅ خليها موجودة
 
     // تحديث الإحصائيات
     await updateStatistics();
@@ -205,24 +205,10 @@ async function deleteSale(saleId) {
 
         if (deleteError) throw deleteError;
 
-        // إعادة الكمية إلى مخزون الفرع
-        const { data: stockData, error: stockError } = await supabaseClient
-            .from("branch_stock")
-            .select("quantity")
-            .eq("branch_id", currentBranchId)
-            .eq("product_id", saleData.product_id)
-            .single();
-
-        if (!stockError) {
-            await supabaseClient
-                .from("branch_stock")
-                .update({ quantity: (stockData.quantity || 0) + saleData.quantity })
-                .eq("branch_id", currentBranchId)
-                .eq("product_id", saleData.product_id);
-        }
-
         // إعادة تحميل البيانات
         await loadTodaySales();
+        await loadBranchStock(); // ✅ أضف هذا السطر
+
         await updateStatistics();
 
         showSalesMessage("تم حذف المبيعات بنجاح", "success");
