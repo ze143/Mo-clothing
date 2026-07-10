@@ -1,20 +1,134 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>تدقيق المخزون - نظام MO</title>
+    <title>تدقيق المخزون الشامل - نظام MO</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="../../assets/css/style.css" />
     <style>
-        .table-danger td {
-            background-color: #f8d7da !important;
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(180deg, #1a1a2e, #16213e);
+            color: #fff;
+            padding: 20px 0;
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 260px;
+            overflow-y: auto;
         }
         
-        .table-warning td {
-            background-color: #fff3cd !important;
+        .sidebar-brand {
+            text-align: center;
+            padding: 0 20px 30px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .sidebar-brand h2 {
+            font-weight: 700;
+            font-size: 28px;
+            margin: 0;
+        }
+        
+        .sidebar-brand h2 span {
+            color: #e74c3c;
+        }
+        
+        .sidebar-brand small {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 13px;
+            display: block;
+            margin-top: 4px;
+        }
+        
+        .sidebar-menu {
+            list-style: none;
+            padding: 15px 12px;
+            margin: 0;
+        }
+        
+        .sidebar-menu li {
+            margin-bottom: 4px;
+            border-radius: 10px;
+            transition: 0.2s;
+        }
+        
+        .sidebar-menu li a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: 0.2s;
+        }
+        
+        .sidebar-menu li a:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff;
+        }
+        
+        .sidebar-menu li.active a {
+            background: #e74c3c;
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.35);
+        }
+        
+        .sidebar-menu li a i {
+            width: 22px;
+            text-align: center;
+            font-size: 18px;
+        }
+        
+        .sidebar-menu li.logout-item {
+            margin-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding-top: 15px;
+        }
+        
+        .main-content {
+            margin-right: 260px;
+            padding: 25px;
+            min-height: 100vh;
+            background: #f0f2f5;
+        }
+        
+        .top-navbar {
+            background: #fff;
+            border-radius: 12px;
+            padding: 15px 25px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .user-info .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #2c3e50;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
         }
         
         .stats-card {
@@ -34,6 +148,7 @@
         .stats-card .stats-label {
             color: #888;
             font-size: 14px;
+            margin-top: 4px;
         }
         
         .stats-card.danger {
@@ -48,16 +163,28 @@
             border-right-color: #27ae60;
         }
         
-        .table-container {
+        .stats-card.primary {
+            border-right-color: #2c3e50;
+        }
+        
+        .table-responsive {
             max-height: 500px;
             overflow-y: auto;
         }
         
-        .table-container thead th {
+        .table thead th {
             position: sticky;
             top: 0;
             background: #fff;
             z-index: 10;
+        }
+        
+        .section-title {
+            background: #fff;
+            border-radius: 12px;
+            padding: 12px 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
         }
         
         .menu-toggle {
@@ -95,7 +222,7 @@
         
         @media (max-width: 576px) {
             .main-content {
-                padding: 10px;
+                padding: 12px;
             }
             .top-navbar {
                 flex-direction: column;
@@ -104,14 +231,19 @@
             .stats-card .stats-number {
                 font-size: 20px;
             }
+            .stats-card {
+                padding: 12px;
+            }
+            .table-responsive table {
+                font-size: 12px;
+            }
         }
     </style>
 </head>
 
 <body>
-    <button class="menu-toggle" id="menuToggle">
-      <i class="fas fa-bars"></i>
-    </button>
+
+    <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
 
     <div class="sidebar" id="sidebar">
         <div class="sidebar-brand">
@@ -119,128 +251,351 @@
             <small>لوحة التحكم</small>
         </div>
         <ul class="sidebar-menu">
-            <li>
-                <a href="dashboard.html"><i class="fas fa-chart-pie"></i><span>لوحة التحكم</span></a
-          >
-        </li>
-        <li>
-          <a href="branches.html"
-            ><i class="fas fa-store"></i><span>الفروع</span></a
-          >
-        </li>
-        <li>
-          <a href="branch-report.html"
-            ><i class="fas fa-chart-bar"></i><span>تقرير الفروع</span></a
-          >
-        </li>
-        <li>
-          <a href="products.html"
-            ><i class="fas fa-box"></i><span>المنتجات</span></a
-          >
-        </li>
-        <li>
-          <a href="warehouse.html"
-            ><i class="fas fa-warehouse"></i><span>المخزن</span></a
-          >
-        </li>
-        <li>
-          <a href="branch-transfers.html"
-            ><i class="fas fa-exchange-alt"></i><span>سجل التوريدات</span></a
-          >
-        </li>
-        <li>
-          <a href="supplier-supplies.html"
-            ><i class="fas fa-cart-plus"></i><span>توريد للمخزن</span></a
-          >
-        </li>
-        <li>
-          <a href="day-closing.html"
-            ><i class="fas fa-lock"></i><span>إقفال اليوم</span></a
-          >
-        </li>
-        <li>
-          <a href="day-closing-reports.html"
-            ><i class="fas fa-file-alt"></i><span>تقارير الإقفال</span></a
-          >
-        </li>
-        <li>
-          <a href="inventory.html"
-            ><i class="fas fa-clipboard-list"></i><span>الجرد</span></a
-          >
-        </li>
-        <li>
-          <a href="inventory-reports.html"
-            ><i class="fas fa-file-alt"></i><span>تقارير الجرد</span></a
-          >
-        </li>
-        <li class="active">
-          <a href="stock-audit.html"
-            ><i class="fas fa-check-double"></i><span>تدقيق المخزون</span></a
-          >
-        </li>
-        <li class="logout-item">
-          <a href="#" onclick="logout()"
-            ><i class="fas fa-sign-out-alt"></i><span>تسجيل الخروج</span></a
-          >
-        </li>
-      </ul>
+            <li><a href="dashboard.html"><i class="fas fa-chart-pie"></i><span>لوحة التحكم</span></a></li>
+            <li><a href="branches.html"><i class="fas fa-store"></i><span>الفروع</span></a></li>
+            <li><a href="products.html"><i class="fas fa-box"></i><span>المنتجات</span></a></li>
+            <li><a href="warehouse.html"><i class="fas fa-warehouse"></i><span>المخزن</span></a></li>
+            <li><a href="branch-transfers.html"><i class="fas fa-exchange-alt"></i><span>سجل التوريدات</span></a></li>
+            <li><a href="supplier-supplies.html"><i class="fas fa-cart-plus"></i><span>توريد للمخزن</span></a></li>
+            <li><a href="day-closing.html"><i class="fas fa-lock"></i><span>إقفال اليوم</span></a></li>
+            <li><a href="day-closing-reports.html"><i class="fas fa-file-alt"></i><span>تقارير الإقفال</span></a></li>
+            <li><a href="inventory.html"><i class="fas fa-clipboard-list"></i><span>الجرد</span></a></li>
+            <li><a href="inventory-reports.html"><i class="fas fa-file-alt"></i><span>تقارير الجرد</span></a></li>
+            <li class="active"><a href="stock-audit-full.html"><i class="fas fa-check-double"></i><span>تدقيق شامل</span></a></li>
+            <li class="logout-item"><a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i><span>تسجيل الخروج</span></a></li>
+        </ul>
     </div>
 
     <div class="main-content">
-      <nav class="top-navbar">
-        <div>
-          <h4 class="mb-0">
-            <i class="fas fa-check-double me-2"></i>تدقيق المخزون
-          </h4>
-          <small class="text-muted"
-            >🔍 مراجعة الفروقات بين المخزون المتوقع والفعلي</small
-          >
-        </div>
-        <div class="user-info">
-          <div class="avatar" id="userAvatar">A</div>
-          <span id="userName">أدمن</span>
-        </div>
-      </nav>
+        <nav class="top-navbar">
+            <div>
+                <h4 class="mb-0"><i class="fas fa-check-double me-2"></i>تدقيق المخزون الشامل</h4>
+                <small class="text-muted">📊 فحص كامل لجميع الفروقات</small>
+            </div>
+            <div class="user-info">
+                <div class="avatar" id="userAvatar">A</div>
+                <span id="userName">أدمن</span>
+            </div>
+        </nav>
 
-      <div class="alert alert-warning">
-        <i class="fas fa-exclamation-triangle me-2"></i> هذا التقرير يعرض
-        الفروقات بين المخزون المتوقع والفعلي.
-        <strong>الأرقام الحمراء</strong> تعني وجود مشكلة تحتاج تدخل.
-      </div>
-
-      <div id="auditResults">
-        <div class="text-center text-muted py-4">
-          <i class="fas fa-spinner fa-spin fa-2x mb-2 d-block"></i> جاري تحميل
-          بيانات التدقيق...
+        <div id="auditContent">
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-spinner fa-spin fa-3x mb-3 d-block"></i>
+                <h5>جاري تحميل بيانات التدقيق...</h5>
+            </div>
         </div>
-      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/config.js"></script>
     <script src="../../assets/js/auth.js"></script>
-    <script src="../../assets/js/admin/stock-audit.js"></script>
-
     <script>
-      document
-        .getElementById("menuToggle")
-        .addEventListener("click", function (e) {
-          e.stopPropagation();
-          document.getElementById("sidebar").classList.toggle("open");
+        // =============================================
+        // تدقيق المخزون الشامل - صفحة كاملة
+        // =============================================
+
+        document.addEventListener("DOMContentLoaded", async function() {
+            try {
+                const user = await checkAuthAndRedirect();
+                if (!user || user.profile.role !== "admin") {
+                    window.location.href = "/pages/login.html";
+                    return;
+                }
+
+                document.getElementById("userAvatar").textContent = user.profile.full_name ? user.profile.full_name.charAt(0).toUpperCase() : "A";
+                document.getElementById("userName").textContent = user.profile.full_name || "أدمن";
+
+                await loadFullAudit();
+            } catch (error) {
+                console.error("Error initializing:", error);
+                showError("حدث خطأ في تحميل الصفحة");
+            }
         });
-      document.addEventListener("click", function (e) {
-        var sidebar = document.getElementById("sidebar");
-        var toggle = document.getElementById("menuToggle");
-        if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
-          sidebar.classList.remove("open");
+
+        async function loadFullAudit() {
+            try {
+                const container = document.getElementById("auditContent");
+
+                // جلب جميع البيانات
+                const [branchesRes, productsRes, transfersRes, salesRes, stockRes] = await Promise.all([
+                    supabaseClient.from("branches").select("*"),
+                    supabaseClient.from("products").select("*"),
+                    supabaseClient.from("branch_transfers").select("*"),
+                    supabaseClient.from("daily_sales").select("*"),
+                    supabaseClient.from("branch_stock").select("*")
+                ]);
+
+                if (branchesRes.error) throw branchesRes.error;
+                if (productsRes.error) throw productsRes.error;
+                if (transfersRes.error) throw transfersRes.error;
+                if (salesRes.error) throw salesRes.error;
+                if (stockRes.error) throw stockRes.error;
+
+                const branches = branchesRes.data;
+                const products = productsRes.data;
+                const transfers = transfersRes.data;
+                const sales = salesRes.data;
+                const stock = stockRes.data;
+
+                // حساب الفروقات
+                let auditData = [];
+                let totalErrors = 0;
+                let totalMissing = 0;
+                let totalExtra = 0;
+                let duplicateSupplies = 0;
+                let duplicateSales = 0;
+
+                // حساب التوريدات المكررة
+                const supplyGroups = {};
+                transfers.filter(t => t.transfer_type === 'supply').forEach(t => {
+                    const key = t.to_branch_id + '|' + t.product_id + '|' + t.created_at.split('T')[0];
+                    supplyGroups[key] = (supplyGroups[key] || 0) + 1;
+                });
+                duplicateSupplies = Object.values(supplyGroups).filter(v => v > 1).length;
+
+                // حساب المبيعات المكررة
+                const salesGroups = {};
+                sales.filter(s => s.is_closed === true).forEach(s => {
+                    const key = s.branch_id + '|' + s.product_id + '|' + s.sale_date;
+                    salesGroups[key] = (salesGroups[key] || 0) + 1;
+                });
+                duplicateSales = Object.values(salesGroups).filter(v => v > 1).length;
+
+                // حساب الفروقات لكل فرع ومنتج
+                for (const branch of branches) {
+                    for (const product of products) {
+                        const totalSupplied = transfers
+                            .filter(t => t.to_branch_id === branch.id && t.product_id === product.id && t.transfer_type === 'supply')
+                            .reduce((sum, t) => sum + t.quantity, 0);
+
+                        const totalSold = sales
+                            .filter(s => s.branch_id === branch.id && s.product_id === product.id && s.is_closed === true)
+                            .reduce((sum, s) => sum + s.quantity, 0);
+
+                        const totalReturned = transfers
+                            .filter(t => t.from_branch_id === branch.id && t.product_id === product.id && t.transfer_type === 'return')
+                            .reduce((sum, t) => sum + t.quantity, 0);
+
+                        const totalTransferredOut = transfers
+                            .filter(t => t.from_branch_id === branch.id && t.product_id === product.id && t.transfer_type === 'transfer')
+                            .reduce((sum, t) => sum + t.quantity, 0);
+
+                        const totalTransferredIn = transfers
+                            .filter(t => t.to_branch_id === branch.id && t.product_id === product.id && t.transfer_type === 'transfer')
+                            .reduce((sum, t) => sum + t.quantity, 0);
+
+                        const actualStock = stock
+                            .filter(s => s.branch_id === branch.id && s.product_id === product.id)
+                            .reduce((sum, s) => sum + s.quantity, 0);
+
+                        const expectedStock = totalSupplied - totalSold - totalReturned - totalTransferredOut + totalTransferredIn;
+                        const difference = expectedStock - actualStock;
+
+                        if (totalSupplied > 0 || totalSold > 0 || totalReturned > 0 || totalTransferredOut > 0 || totalTransferredIn > 0 || actualStock > 0) {
+                            if (difference !== 0) {
+                                auditData.push({
+                                    branch: branch.name,
+                                    product: product.name,
+                                    supplied: totalSupplied,
+                                    sold: totalSold,
+                                    returned: totalReturned,
+                                    transferredOut: totalTransferredOut,
+                                    transferredIn: totalTransferredIn,
+                                    expected: expectedStock,
+                                    actual: actualStock,
+                                    difference: difference,
+                                    status: difference > 0 ? 'ناقص ❌' : 'زائد ⚠️'
+                                });
+                                totalErrors++;
+                                if (difference > 0) totalMissing += difference;
+                                else totalExtra += Math.abs(difference);
+                            }
+                        }
+                    }
+                }
+
+                // بناء الـ HTML
+                let html = '';
+
+                // 1. ملخص سريع
+                html += `
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-3 col-6">
+                            <div class="stats-card ${totalErrors > 0 ? 'danger' : 'success'}">
+                                <div class="stats-number">${totalErrors}</div>
+                                <div class="stats-label">منتجات بها مشكلة</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="stats-card warning">
+                                <div class="stats-number">${totalMissing}</div>
+                                <div class="stats-label">قطع ناقصة</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="stats-card primary">
+                                <div class="stats-number">${totalExtra}</div>
+                                <div class="stats-label">قطع زائدة</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="stats-card ${(duplicateSupplies > 0 || duplicateSales > 0) ? 'danger' : 'success'}">
+                                <div class="stats-number">${duplicateSupplies + duplicateSales}</div>
+                                <div class="stats-label">عمليات مكررة</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // 2. الفروقات
+                if (auditData.length === 0) {
+                    html += `
+                        <div class="alert alert-success text-center py-4">
+                            <i class="fas fa-check-circle fa-2x mb-2 d-block"></i>
+                            <h5>🎉 جميع المنتجات مضبوطة</h5>
+                            <p class="text-muted">لا توجد فروقات في المخزون</p>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="section-title">
+                            <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+                            <strong>الفروقات</strong>
+                            <span class="badge bg-danger ms-2">${auditData.length}</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>الفرع</th>
+                                        <th>المنتج</th>
+                                        <th>المورد</th>
+                                        <th>المباع</th>
+                                        <th>المرتجع</th>
+                                        <th>تحويل خارج</th>
+                                        <th>تحويل داخل</th>
+                                        <th>المتوقع</th>
+                                        <th>الفعلي</th>
+                                        <th>الفرق</th>
+                                        <th>الحالة</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${auditData.map(item => `
+                                        <tr class="table-danger">
+                                            <td>${item.branch}</td>
+                                            <td>${item.product}</td>
+                                            <td>${item.supplied}</td>
+                                            <td>${item.sold}</td>
+                                            <td>${item.returned}</td>
+                                            <td>${item.transferredOut}</td>
+                                            <td>${item.transferredIn}</td>
+                                            <td>${item.expected}</td>
+                                            <td>${item.actual}</td>
+                                            <td><strong>${item.difference}</strong></td>
+                                            <td>${item.status}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+
+                // 3. العمليات المكررة
+                if (duplicateSupplies > 0 || duplicateSales > 0) {
+                    html += `
+                        <div class="section-title mt-4">
+                            <i class="fas fa-copy text-warning me-2"></i>
+                            <strong>العمليات المكررة</strong>
+                        </div>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            يوجد <strong>${duplicateSupplies}</strong> توريد مكرر و <strong>${duplicateSales}</strong> مبيعات مكررة
+                        </div>
+                    `;
+                }
+
+                // 4. الأرقام الإجمالية
+                const totalSupplied = transfers.filter(t => t.transfer_type === 'supply').reduce((sum, t) => sum + t.quantity, 0);
+                const totalSold = sales.filter(s => s.is_closed === true).reduce((sum, s) => sum + s.quantity, 0);
+                const totalReturned = transfers.filter(t => t.transfer_type === 'return').reduce((sum, t) => sum + t.quantity, 0);
+                const totalTransferred = transfers.filter(t => t.transfer_type === 'transfer').reduce((sum, t) => sum + t.quantity, 0);
+                const totalStock = stock.reduce((sum, s) => sum + s.quantity, 0);
+
+                html += `
+                    <div class="section-title mt-4">
+                        <i class="fas fa-chart-bar text-primary me-2"></i>
+                        <strong>الأرقام الإجمالية</strong>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-2 col-6">
+                            <div class="stats-card primary">
+                                <div class="stats-number">${totalSupplied}</div>
+                                <div class="stats-label">توريدات</div>
+                            </div>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <div class="stats-card danger">
+                                <div class="stats-number">${totalSold}</div>
+                                <div class="stats-label">مبيعات</div>
+                            </div>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <div class="stats-card warning">
+                                <div class="stats-number">${totalReturned}</div>
+                                <div class="stats-label">مرتجعات</div>
+                            </div>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <div class="stats-card info">
+                                <div class="stats-number">${totalTransferred}</div>
+                                <div class="stats-label">تحويلات</div>
+                            </div>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <div class="stats-card success">
+                                <div class="stats-number">${totalStock}</div>
+                                <div class="stats-label">مخزون</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                container.innerHTML = html;
+
+            } catch (error) {
+                console.error("Error loading audit:", error);
+                document.getElementById("auditContent").innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        فشل تحميل بيانات التدقيق: ${error.message}
+                    </div>
+                `;
+            }
         }
-      });
-      document.querySelectorAll(".sidebar-menu a").forEach(function (link) {
-        link.addEventListener("click", function () {
-          document.getElementById("sidebar").classList.remove("open");
+
+        // فتح/غلق القائمة
+        document.getElementById('menuToggle').addEventListener('click', function(e) {
+            e.stopPropagation();
+            document.getElementById('sidebar').classList.toggle('open');
         });
-      });
+
+        document.addEventListener('click', function(e) {
+            var sidebar = document.getElementById('sidebar');
+            var toggle = document.getElementById('menuToggle');
+            if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
+                sidebar.classList.remove('open');
+            }
+        });
+
+        document.querySelectorAll('.sidebar-menu a').forEach(function(link) {
+            link.addEventListener('click', function() {
+                document.getElementById('sidebar').classList.remove('open');
+            });
+        });
     </script>
-  </body>
+</body>
+
 </html>
