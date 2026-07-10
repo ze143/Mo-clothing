@@ -1,4 +1,7 @@
-// متغيرات عامة
+// =============================================
+// لوحة الفرع - نسخة نهائية
+// =============================================
+
 let currentBranchId = null;
 let currentBranchName = "";
 let todaySales = [];
@@ -9,7 +12,6 @@ document.addEventListener("DOMContentLoaded", async function() {
     const user = await checkAuthAndRedirect();
     if (!user) return;
 
-    // التحقق من صلاحيات الفرع
     if (user.profile.role !== "branch_user") {
         alert("غير مصرح لك بالوصول إلى هذه الصفحة");
         window.location.href = "/pages/login.html";
@@ -18,7 +20,6 @@ document.addEventListener("DOMContentLoaded", async function() {
 
     currentBranchId = user.profile.branch_id;
 
-    // عرض معلومات المستخدم
     const avatar = document.getElementById("userAvatar");
     const userName = document.getElementById("userName");
     const branchName = document.getElementById("branchName");
@@ -28,20 +29,12 @@ document.addEventListener("DOMContentLoaded", async function() {
         "B";
     userName.textContent = user.profile.full_name || "موظف فرع";
 
-    // الحصول على اسم الفرع
     await loadBranchInfo();
-
-    // تحميل المنتجات
     await loadProducts();
-
-    // تحميل مبيعات اليوم
     await loadTodaySales();
-    await loadBranchStock(); // ✅ خليها موجودة
-
-    // تحديث الإحصائيات
+    await loadBranchStock();
     await updateStatistics();
 
-    // التعامل مع نموذج إضافة مبيعات
     document
         .getElementById("dailySalesForm")
         .addEventListener("submit", handleAddSale);
@@ -144,6 +137,7 @@ function displayTodaySales() {
     totalElement.textContent = total;
 }
 
+// إضافة مبيعات
 async function handleAddSale(e) {
     e.preventDefault();
     e.stopPropagation();
@@ -172,7 +166,6 @@ async function handleAddSale(e) {
         if (error) throw error;
 
         await loadTodaySales();
-        // ❌ متستدعيش loadBranchStock() هنا عشان المخزون متغيرش
         await updateStatistics();
 
         document.getElementById("dailySalesForm").reset();
@@ -189,16 +182,7 @@ async function deleteSale(saleId) {
     if (!confirm("هل أنت متأكد من حذف هذه المبيعات؟")) return;
 
     try {
-        // 1. جلب بيانات المبيعات قبل الحذف
-        const { data: saleData, error: fetchError } = await supabaseClient
-            .from("daily_sales")
-            .select("product_id, quantity")
-            .eq("id", saleId)
-            .single();
-
-        if (fetchError) throw fetchError;
-
-        // 2. حذف المبيعات
+        // ✅ حذف المبيعات فقط (من غير تعديل المخزون)
         const { error: deleteError } = await supabaseClient
             .from("daily_sales")
             .delete()
@@ -206,31 +190,11 @@ async function deleteSale(saleId) {
 
         if (deleteError) throw deleteError;
 
-        // 3. ✅ إرجاع الكمية للمخزون (علشان المبيعات لسه مقفلة)
-        const { data: stockData, error: stockError } = await supabaseClient
-            .from("branch_stock")
-            .select("quantity")
-            .eq("branch_id", currentBranchId)
-            .eq("product_id", saleData.product_id)
-            .single();
-
-        if (!stockError) {
-            await supabaseClient
-                .from("branch_stock")
-                .update({
-                    quantity: (stockData.quantity || 0) + saleData.quantity,
-                    updated_at: new Date().toISOString(),
-                })
-                .eq("branch_id", currentBranchId)
-                .eq("product_id", saleData.product_id);
-        }
-
-        // 4. إعادة تحميل البيانات
         await loadTodaySales();
         await loadBranchStock();
         await updateStatistics();
 
-        showSalesMessage("✅ تم حذف المبيعات وإرجاع الكمية للمخزون", "success");
+        showSalesMessage("✅ تم حذف المبيعات بنجاح", "success");
     } catch (error) {
         console.error("Error deleting sale:", error);
         showSalesMessage("❌ فشل حذف المبيعات", "danger");
@@ -274,9 +238,9 @@ async function loadBranchStock() {
     }
 }
 
+// تحديث الإحصائيات
 async function updateStatistics() {
     try {
-        // ✅ مبيعات اليوم (عدد القطع)
         const todayTotal = todaySales.reduce((sum, sale) => sum + sale.quantity, 0);
         document.getElementById("branchTodaySales").textContent = todayTotal;
     } catch (error) {
@@ -296,7 +260,7 @@ function showSalesMessage(message, type) {
     }, 5000);
 }
 
-// ✅ الاستماع لتحديث المخزون من الأدمن
+// الاستماع لتحديث المخزون من الأدمن
 window.addEventListener("storage", function(e) {
     if (e.key === "stockUpdated") {
         console.log("🔄 تم تحديث المخزون من الأدمن");
