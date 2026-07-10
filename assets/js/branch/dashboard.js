@@ -32,7 +32,6 @@ document.addEventListener("DOMContentLoaded", async function() {
     await loadBranchInfo();
     await loadProducts();
     await loadTodaySales();
-    await loadBranchStock();
     await updateStatistics();
 
     document
@@ -137,7 +136,7 @@ function displayTodaySales() {
     totalElement.textContent = total;
 }
 
-// إضافة مبيعات
+// إضافة مبيعات (من غير خصم المخزون)
 async function handleAddSale(e) {
     e.preventDefault();
     e.stopPropagation();
@@ -177,7 +176,7 @@ async function handleAddSale(e) {
     }
 }
 
-// حذف مبيعات
+// حذف مبيعات (من غير إرجاع المخزون)
 async function deleteSale(saleId) {
     if (!confirm("هل أنت متأكد من حذف هذه المبيعات؟")) return;
 
@@ -191,50 +190,12 @@ async function deleteSale(saleId) {
         if (deleteError) throw deleteError;
 
         await loadTodaySales();
-        await loadBranchStock();
         await updateStatistics();
 
         showSalesMessage("✅ تم حذف المبيعات بنجاح", "success");
     } catch (error) {
         console.error("Error deleting sale:", error);
         showSalesMessage("❌ فشل حذف المبيعات", "danger");
-    }
-}
-
-// تحميل مخزون الفرع
-async function loadBranchStock() {
-    try {
-        const { data, error } = await supabaseClient
-            .from("branch_stock")
-            .select(
-                `
-                *,
-                products(name)
-            `,
-            )
-            .eq("branch_id", currentBranchId);
-
-        if (error) throw error;
-
-        const tbody = document.getElementById("branchStockBody");
-        if (data.length === 0) {
-            tbody.innerHTML =
-                '<tr><td colspan="2" class="text-center text-muted">لا توجد منتجات في المخزون</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = data
-            .map(
-                (item) => `
-            <tr>
-                <td>${item.products.name}</td>
-                <td>${item.quantity}</td>
-            </tr>
-        `,
-            )
-            .join("");
-    } catch (error) {
-        console.error("Error loading branch stock:", error);
     }
 }
 
@@ -264,7 +225,6 @@ function showSalesMessage(message, type) {
 window.addEventListener("storage", function(e) {
     if (e.key === "stockUpdated") {
         console.log("🔄 تم تحديث المخزون من الأدمن");
-        loadBranchStock();
         updateStatistics();
     }
 });

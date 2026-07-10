@@ -155,12 +155,7 @@ async function closeDayWithStatus(status = "completed") {
         // 1. جلب المبيعات غير المقفلة
         const { data: salesData, error: salesError } = await supabaseClient
             .from("daily_sales")
-            .select(
-                `
-                *,
-                products(price)
-            `,
-            )
+            .select(`*`)
             .eq("branch_id", currentBranchId)
             .eq("sale_date", todayDate)
             .eq("is_closed", false);
@@ -191,11 +186,8 @@ async function closeDayWithStatus(status = "completed") {
         if (closingError) throw closingError;
 
         // =============================================
-        // 4. ✅ تصفير المبيعات فقط (من غير تغيير المخزون)
+        // 4. ✅ فقط تحديث حالة المبيعات (دون تعديل المخزون)
         // =============================================
-        // المخزون لا يتغير نهائياً
-
-        // 5. تحديث المبيعات بأنها مقفلة
         const { error: updateError } = await supabaseClient
             .from("daily_sales")
             .update({ is_closed: true })
@@ -205,10 +197,10 @@ async function closeDayWithStatus(status = "completed") {
 
         if (updateError) throw updateError;
 
-        // 6. تحديث جميع الصفحات المفتوحة
+        // 5. تحديث جميع الصفحات المفتوحة
         localStorage.setItem("stockUpdated", Date.now());
 
-        showSuccess("✅ تم إقفال اليوم بنجاح");
+        showSuccess("✅ تم إقفال اليوم بنجاح (المخزون تم خصمه مسبقاً)");
         await loadBranchClosingData();
     } catch (error) {
         console.error("Error closing day:", error);
