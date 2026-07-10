@@ -158,12 +158,15 @@ async function closeDayWithStatus(status = "completed") {
             var stockData = stockResult.data;
 
             if (stockData) {
-                var newQuantity = Math.max(0, (stockData.quantity || 0) - sale.quantity);
+                var newQuantity = Math.max(
+                    0,
+                    (stockData.quantity || 0) - sale.quantity,
+                );
                 await supabaseClient
                     .from("branch_stock")
                     .update({
                         quantity: newQuantity,
-                        updated_at: new Date().toISOString()
+                        updated_at: new Date().toISOString(),
                     })
                     .eq("branch_id", currentBranchId)
                     .eq("product_id", sale.product_id);
@@ -186,6 +189,17 @@ async function closeDayWithStatus(status = "completed") {
         console.error("Error closing day:", error);
         alert("فشل إقفال اليوم: " + error.message);
     }
+}
+
+async function closeDayAndRefresh() {
+    await closeDay();
+
+    // ✅ تحديث جميع الصفحات المفتوحة
+    // إرسال رسالة للتحديث
+    localStorage.setItem("stockUpdated", Date.now());
+
+    // تحديث الصفحة الحالية
+    location.reload();
 }
 
 // جعل الدوال متاحة

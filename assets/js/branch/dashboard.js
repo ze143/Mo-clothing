@@ -172,6 +172,7 @@ async function handleAddSale(e) {
         if (error) throw error;
 
         await loadTodaySales();
+        // ❌ متستدعيش loadBranchStock() هنا عشان المخزون متغيرش
         await updateStatistics();
 
         document.getElementById("dailySalesForm").reset();
@@ -188,16 +189,6 @@ async function deleteSale(saleId) {
     if (!confirm("هل أنت متأكد من حذف هذه المبيعات؟")) return;
 
     try {
-        // الحصول على بيانات المبيعات قبل الحذف
-        const { data: saleData, error: fetchError } = await supabaseClient
-            .from("daily_sales")
-            .select("product_id, quantity")
-            .eq("id", saleId)
-            .single();
-
-        if (fetchError) throw fetchError;
-
-        // حذف المبيعات
         const { error: deleteError } = await supabaseClient
             .from("daily_sales")
             .delete()
@@ -205,10 +196,8 @@ async function deleteSale(saleId) {
 
         if (deleteError) throw deleteError;
 
-        // إعادة تحميل البيانات
         await loadTodaySales();
-        await loadBranchStock(); // ✅ أضف هذا السطر
-
+        // ❌ متستدعيش loadBranchStock() هنا عشان المخزون متغيرش
         await updateStatistics();
 
         showSalesMessage("تم حذف المبيعات بنجاح", "success");
@@ -257,11 +246,11 @@ async function loadBranchStock() {
 
 async function updateStatistics() {
     try {
-        // مبيعات اليوم (عدد القطع)
+        // ✅ مبيعات اليوم (عدد القطع)
         const todayTotal = todaySales.reduce((sum, sale) => sum + sale.quantity, 0);
         document.getElementById("branchTodaySales").textContent = todayTotal;
 
-        // مخزون الفرع
+        // ✅ مخزون الفرع (بيجيب من الداتا بيز)
         const { data: stockData, error: stockError } = await supabaseClient
             .from("branch_stock")
             .select("quantity")
@@ -290,6 +279,15 @@ function showSalesMessage(message, type) {
         element.classList.add("d-none");
     }, 5000);
 }
+
+// ✅ الاستماع لتحديث المخزون من الأدمن
+window.addEventListener("storage", function(e) {
+    if (e.key === "stockUpdated") {
+        console.log("🔄 تم تحديث المخزون من الأدمن");
+        loadBranchStock();
+        updateStatistics();
+    }
+});
 
 // جعل deleteSale متاحاً في النطاق العام
 window.deleteSale = deleteSale;
