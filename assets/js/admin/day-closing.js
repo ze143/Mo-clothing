@@ -205,6 +205,3 @@ async function closeDayAndRefresh() {
 // جعل الدوال متاحة
 window.closeDay = closeDayWithStatus;
 window.loadBranchClosingData = loadBranchClosingData;
-// جعل الدوال متاحة
-window.closeDay = closeDayWithStatus;
-window.loadBranchClosingData = loadBranchClosingData;
