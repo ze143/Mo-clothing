@@ -189,6 +189,16 @@ async function deleteSale(saleId) {
     if (!confirm("هل أنت متأكد من حذف هذه المبيعات؟")) return;
 
     try {
+        // 1. جلب بيانات المبيعات قبل الحذف
+        const { data: saleData, error: fetchError } = await supabaseClient
+            .from("daily_sales")
+            .select("product_id, quantity")
+            .eq("id", saleId)
+            .single();
+
+        if (fetchError) throw fetchError;
+
+        // 2. حذف المبيعات
         const { error: deleteError } = await supabaseClient
             .from("daily_sales")
             .delete()
@@ -196,14 +206,34 @@ async function deleteSale(saleId) {
 
         if (deleteError) throw deleteError;
 
+        // 3. ✅ إرجاع الكمية للمخزون (علشان المبيعات لسه مقفلة)
+        const { data: stockData, error: stockError } = await supabaseClient
+            .from("branch_stock")
+            .select("quantity")
+            .eq("branch_id", currentBranchId)
+            .eq("product_id", saleData.product_id)
+            .single();
+
+        if (!stockError) {
+            await supabaseClient
+                .from("branch_stock")
+                .update({
+                    quantity: (stockData.quantity || 0) + saleData.quantity,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("branch_id", currentBranchId)
+                .eq("product_id", saleData.product_id);
+        }
+
+        // 4. إعادة تحميل البيانات
         await loadTodaySales();
-        // ❌ متستدعيش loadBranchStock() هنا عشان المخزون متغيرش
+        await loadBranchStock();
         await updateStatistics();
 
-        showSalesMessage("تم حذف المبيعات بنجاح", "success");
+        showSalesMessage("✅ تم حذف المبيعات وإرجاع الكمية للمخزون", "success");
     } catch (error) {
         console.error("Error deleting sale:", error);
-        showSalesMessage("فشل حذف المبيعات", "danger");
+        showSalesMessage("❌ فشل حذف المبيعات", "danger");
     }
 }
 
@@ -249,20 +279,6 @@ async function updateStatistics() {
         // ✅ مبيعات اليوم (عدد القطع)
         const todayTotal = todaySales.reduce((sum, sale) => sum + sale.quantity, 0);
         document.getElementById("branchTodaySales").textContent = todayTotal;
-
-        // ✅ مخزون الفرع (بيجيب من الداتا بيز)
-        const { data: stockData, error: stockError } = await supabaseClient
-            .from("branch_stock")
-            .select("quantity")
-            .eq("branch_id", currentBranchId);
-
-        if (!stockError) {
-            const totalStock = stockData.reduce(
-                (sum, item) => sum + item.quantity,
-                0,
-            );
-            document.getElementById("branchStock").textContent = totalStock;
-        }
     } catch (error) {
         console.error("Error updating statistics:", error);
     }
