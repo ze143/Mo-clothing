@@ -98,7 +98,7 @@ async function loadAudit() {
                     )
                     .reduce((sum, t) => sum + t.quantity, 0);
 
-                // 6. إجمالي مرتجعات العملاء (تزيد المخزون)
+                // ✅ إجمالي مرتجعات العملاء (تزيد المخزون في الفرع)
                 const totalCustomerReturn = transfers.data
                     .filter(
                         (t) =>
@@ -108,7 +108,7 @@ async function loadAudit() {
                     )
                     .reduce((sum, t) => sum + t.quantity, 0);
 
-                // 7. إجمالي الاستبدالات (تزيد المخزون)
+                // ✅ إجمالي الاستبدالات (تزيد المخزون في الفرع)
                 const totalExchange = transfers.data
                     .filter(
                         (t) =>
@@ -118,7 +118,7 @@ async function loadAudit() {
                     )
                     .reduce((sum, t) => sum + t.quantity, 0);
 
-                // 8. المخزون الفعلي
+                // ✅ المخزون الفعلي
                 const actualStock = stock.data
                     .filter(
                         (s) => s.branch_id === branch.id && s.product_id === product.id,
@@ -160,10 +160,8 @@ async function loadAudit() {
                         actual: actualStock,
                         difference: difference,
                         status: difference === 0 ?
-                            "مضبوط ✅" :
-                            difference > 0 ?
-                            "ناقص ❌" :
-                            "زائد ⚠️",
+                            "مضبوط ✅" : difference > 0 ?
+                            "ناقص ❌" : "زائد ⚠️",
                         isError: difference !== 0,
                     });
 
