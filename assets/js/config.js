@@ -207,6 +207,108 @@ async function checkSupabaseConnection() {
     }
 }
 
+// ============================================================
+// ✅ دوال مساعدة لتحديث المخزون (تضاف في config.js)
+// ============================================================
+
+// ============================================================
+// دالة تحديث مخزون الفرع (upsert)
+// ============================================================
+async function updateBranchStock(branchId, productId, quantityChange) {
+    try {
+        // 1. جلب الكمية الحالية
+        const { data: current, error } = await supabaseClient
+            .from("branch_stock")
+            .select("quantity")
+            .eq("branch_id", branchId)
+            .eq("product_id", productId)
+            .maybeSingle();
+
+        if (error && error.code !== "PGRST116") throw error;
+
+        const currentQty = (current && current.quantity) || 0;
+        const newQty = Math.max(0, currentQty + quantityChange);
+
+        // 2. استخدام upsert (تحديث أو إدراج)
+        const { error: upsertError } = await supabaseClient
+            .from("branch_stock")
+            .upsert({
+                branch_id: branchId,
+                product_id: productId,
+                quantity: newQty,
+                updated_at: new Date().toISOString(),
+            }, {
+                onConflict: "branch_id, product_id",
+            }, );
+
+        if (upsertError) throw upsertError;
+
+        return {
+            success: true,
+            oldQuantity: currentQty,
+            newQuantity: newQty,
+            change: quantityChange,
+        };
+    } catch (error) {
+        console.error("❌ خطأ في تحديث مخزون الفرع:", error);
+        return {
+            success: false,
+            error: error.message,
+        };
+    }
+}
+
+// ============================================================
+// دالة تحديث المخزن الرئيسي (upsert)
+// ============================================================
+async function updateWarehouseStock(productId, quantityChange) {
+    try {
+        // 1. جلب الكمية الحالية
+        const { data: current, error } = await supabaseClient
+            .from("warehouse_stock")
+            .select("quantity")
+            .eq("product_id", productId)
+            .maybeSingle();
+
+        if (error && error.code !== "PGRST116") throw error;
+
+        const currentQty = (current && current.quantity) || 0;
+        const newQty = Math.max(0, currentQty + quantityChange);
+
+        // 2. استخدام upsert (تحديث أو إدراج)
+        const { error: upsertError } = await supabaseClient
+            .from("warehouse_stock")
+            .upsert({
+                product_id: productId,
+                quantity: newQty,
+                updated_at: new Date().toISOString(),
+            }, {
+                onConflict: "product_id",
+            }, );
+
+        if (upsertError) throw upsertError;
+
+        return {
+            success: true,
+            oldQuantity: currentQty,
+            newQuantity: newQty,
+            change: quantityChange,
+        };
+    } catch (error) {
+        console.error("❌ خطأ في تحديث المخزن:", error);
+        return {
+            success: false,
+            error: error.message,
+        };
+    }
+}
+
+// ============================================================
+// تصدير الدوال للنطاق العام
+// ============================================================
+window.updateBranchStock = updateBranchStock;
+window.updateWarehouseStock = updateWarehouseStock;
+
 // تصدير الدوال للاستخدام العام
 window.checkAuth = checkAuth;
 window.getCurrentUser = getCurrentUser;

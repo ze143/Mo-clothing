@@ -265,3 +265,65 @@ async function loadAudit() {
         `;
   }
 }
+
+// ============================================================
+// ✅ دالة إعادة حساب المخزون بعد الجرد
+// ============================================================
+
+async function recalculateStockAfterAudit(auditId) {
+    try {
+        // 1. جلب عناصر الجرد
+        const { data: items, error } = await supabaseClient
+            .from("inventory_audit_items")
+            .select("*")
+            .eq("audit_id", auditId);
+
+        if (error) throw error;
+
+        let updates = [];
+        for (const item of items) {
+            if (item.difference !== 0) {
+                // 2. تحديث مخزون الفرع
+                const branchResult = await updateBranchStock(
+                    item.branch_id,
+                    item.product_id,
+                    item.difference
+                );
+                
+                // 3. ✅ تحديث المخزن الرئيسي (عكسياً)
+                // لو الفرق موجب (زيادة في الفرع) => نقص من المخزن
+                // لو الفرق سالب (نقص في الفرع) => زيادة في المخزن
+                const warehouseChange = -item.difference;
+                const warehouseResult = await updateWarehouseStock(
+                    item.product_id,
+                    warehouseChange
+                );
+                
+                updates.push({
+                    product_id: item.product_id,
+                    branch_id: item.branch_id,
+                    branch_change: item.difference,
+                    warehouse_change: warehouseChange,
+                    branch_new: branchResult.newQuantity,
+                    warehouse_new: warehouseResult.newQuantity
+                });
+            }
+        }
+
+        return {
+            success: true,
+            updates: updates,
+            message: `✅ تم تحديث ${updates.length} منتج`
+        };
+
+    } catch (error) {
+        console.error("❌ خطأ في إعادة حساب المخزون:", error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+// تصدير الدالة
+window.recalculateStockAfterAudit = recalculateStockAfterAudit;
