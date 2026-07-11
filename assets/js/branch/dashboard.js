@@ -5,7 +5,16 @@
 let currentBranchId = null;
 let currentBranchName = "";
 let todaySales = [];
-let todayDate = new Date().toISOString().split("T")[0];
+// التاريخ بالتوقيت المحلي
+function getLocalDate() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
+
+let todayDate = getLocalDate();
 
 // تهيئة الصفحة
 document.addEventListener("DOMContentLoaded", async function() {
