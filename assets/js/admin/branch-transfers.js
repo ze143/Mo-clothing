@@ -66,7 +66,14 @@ async function loadTransfers() {
         const branchId = document.getElementById("filterBranch").value;
         const productId = document.getElementById("filterProduct").value;
 
-        let query = supabaseClient.from("branch_transfers_view").select("*");
+        // ✅ استخدم الجدول مباشرة (مش الـ View)
+        let query = supabaseClient.from("branch_transfers").select(`
+                *,
+                from_branch:branches!from_branch_id(name),
+                to_branch:branches!to_branch_id(name),
+                products(name),
+                profiles(full_name)
+            `);
 
         if (dateFrom) {
             query = query.gte("transfer_date", dateFrom);
@@ -998,23 +1005,24 @@ async function executeCustomerReturn() {
     }
 
     try {
-        // ✅ 1. زيادة المخزون في الفرع (مرة واحدة)
         const { data: stockData, error: stockError } = await supabaseClient
             .from("branch_stock")
             .select("quantity")
             .eq("branch_id", branchId)
             .eq("product_id", productId)
-            .single();
+            .maybeSingle();
 
-        if (stockError && stockError.code !== "PGRST116") {
-            throw stockError;
+        if (stockError) {
+            console.error("Stock error:", stockError);
+            showMessage(msg, "خطأ في جلب المخزون", "danger");
+            return;
         }
 
         const currentQty = (stockData && stockData.quantity) || 0;
         const newQty = currentQty + quantity;
 
         if (stockData) {
-            await supabaseClient
+            const { error: updateError } = await supabaseClient
                 .from("branch_stock")
                 .update({
                     quantity: newQty,
@@ -1022,25 +1030,51 @@ async function executeCustomerReturn() {
                 })
                 .eq("branch_id", branchId)
                 .eq("product_id", productId);
+
+            if (updateError) {
+                console.error("Update error:", updateError);
+                showMessage(msg, "فشل تحديث المخزون", "danger");
+                return;
+            }
         } else {
-            await supabaseClient.from("branch_stock").insert({
-                branch_id: branchId,
-                product_id: productId,
-                quantity: quantity,
-            });
+            const { error: insertError } = await supabaseClient
+                .from("branch_stock")
+                .insert({
+                    branch_id: branchId,
+                    product_id: productId,
+                    quantity: quantity,
+                });
+
+            if (insertError) {
+                console.error("Insert error:", insertError);
+                showMessage(msg, "فشل إضافة المخزون", "danger");
+                return;
+            }
         }
 
-        // ✅ 2. تسجيل في سجل التوريدات
         const { data: userData } = await supabaseClient.auth.getUser();
-        await supabaseClient.from("branch_transfers").insert({
-            from_branch_id: branchId,
-            to_branch_id: null,
-            product_id: productId,
-            quantity: quantity,
-            transfer_type: "customer_return",
-            notes: notes || "مرتجع من العميل",
-            created_by: (userData && userData.user && userData.user.id) || null,
-        });
+        var userId = null;
+        if (userData && userData.user && userData.user.id) {
+            userId = userData.user.id;
+        }
+
+        const { error: transferError } = await supabaseClient
+            .from("branch_transfers")
+            .insert({
+                from_branch_id: branchId,
+                to_branch_id: null,
+                product_id: productId,
+                quantity: quantity,
+                transfer_type: "customer_return",
+                notes: notes || "مرتجع من العميل",
+                created_by: userId,
+            });
+
+        if (transferError) {
+            console.error("Transfer error:", transferError);
+            showMessage(msg, "فشل تسجيل المرتجع", "danger");
+            return;
+        }
 
         showMessage(msg, "✅ تم إرجاع الكمية بنجاح", "success");
         localStorage.setItem("stockUpdated", Date.now());
@@ -1167,34 +1201,35 @@ async function loadProductsForExchange() {
 }
 
 async function executeExchange() {
-    const branchId = document.getElementById('exchangeBranch').value;
-    const oldProductId = document.getElementById('exchangeOldProduct').value;
-    const newProductId = document.getElementById('exchangeNewProduct').value;
-    const quantity = parseInt(document.getElementById('exchangeQuantity').value);
-    const notes = document.getElementById('exchangeNotes').value;
-    const msg = document.getElementById('exchangeMessage');
+    const branchId = document.getElementById("exchangeBranch").value;
+    const oldProductId = document.getElementById("exchangeOldProduct").value;
+    const newProductId = document.getElementById("exchangeNewProduct").value;
+    const quantity = parseInt(document.getElementById("exchangeQuantity").value);
+    const notes = document.getElementById("exchangeNotes").value;
+    const msg = document.getElementById("exchangeMessage");
 
     if (!branchId || !oldProductId || !newProductId || !quantity) {
-        showMessage(msg, 'يرجى ملء جميع الحقول المطلوبة', 'danger');
+        showMessage(msg, "يرجى ملء جميع الحقول المطلوبة", "danger");
         return;
     }
 
     if (oldProductId === newProductId) {
-        showMessage(msg, 'لا يمكن استبدال المنتج بنفسه', 'danger');
+        showMessage(msg, "لا يمكن استبدال المنتج بنفسه", "danger");
         return;
     }
 
     try {
-        // ✅ 1. إرجاع المنتج القديم (زيادة المخزون)
         const { data: oldStock, error: oldError } = await supabaseClient
-            .from('branch_stock')
-            .select('quantity')
-            .eq('branch_id', branchId)
-            .eq('product_id', oldProductId)
-            .single();
+            .from("branch_stock")
+            .select("quantity")
+            .eq("branch_id", branchId)
+            .eq("product_id", oldProductId)
+            .maybeSingle();
 
-        if (oldError && oldError.code !== 'PGRST116') {
-            throw oldError;
+        if (oldError) {
+            console.error("Old stock error:", oldError);
+            showMessage(msg, "خطأ في جلب المخزون القديم", "danger");
+            return;
         }
 
         const oldCurrentQty = (oldStock && oldStock.quantity) || 0;
@@ -1202,33 +1237,32 @@ async function executeExchange() {
 
         if (oldStock) {
             await supabaseClient
-                .from('branch_stock')
+                .from("branch_stock")
                 .update({
                     quantity: oldNewQty,
-                    updated_at: new Date().toISOString()
+                    updated_at: new Date().toISOString(),
                 })
-                .eq('branch_id', branchId)
-                .eq('product_id', oldProductId);
+                .eq("branch_id", branchId)
+                .eq("product_id", oldProductId);
         } else {
-            await supabaseClient
-                .from('branch_stock')
-                .insert({
-                    branch_id: branchId,
-                    product_id: oldProductId,
-                    quantity: quantity
-                });
+            await supabaseClient.from("branch_stock").insert({
+                branch_id: branchId,
+                product_id: oldProductId,
+                quantity: quantity,
+            });
         }
 
-        // ✅ 2. خصم المنتج الجديد (نقص المخزون)
         const { data: newStock, error: newError } = await supabaseClient
-            .from('branch_stock')
-            .select('quantity')
-            .eq('branch_id', branchId)
-            .eq('product_id', newProductId)
-            .single();
+            .from("branch_stock")
+            .select("quantity")
+            .eq("branch_id", branchId)
+            .eq("product_id", newProductId)
+            .maybeSingle();
 
-        if (newError && newError.code !== 'PGRST116') {
-            throw newError;
+        if (newError) {
+            console.error("New stock error:", newError);
+            showMessage(msg, "خطأ في جلب المخزون الجديد", "danger");
+            return;
         }
 
         const newCurrentQty = (newStock && newStock.quantity) || 0;
@@ -1236,69 +1270,61 @@ async function executeExchange() {
 
         if (newStock) {
             await supabaseClient
-                .from('branch_stock')
+                .from("branch_stock")
                 .update({
                     quantity: newNewQty,
-                    updated_at: new Date().toISOString()
+                    updated_at: new Date().toISOString(),
                 })
-                .eq('branch_id', branchId)
-                .eq('product_id', newProductId);
+                .eq("branch_id", branchId)
+                .eq("product_id", newProductId);
         } else {
-            // لو المنتج الجديد مش موجود، نضيفه بكمية صفر
-            await supabaseClient
-                .from('branch_stock')
-                .insert({
-                    branch_id: branchId,
-                    product_id: newProductId,
-                    quantity: 0
-                });
+            await supabaseClient.from("branch_stock").insert({
+                branch_id: branchId,
+                product_id: newProductId,
+                quantity: 0,
+            });
         }
 
-        // ✅ 3. تسجيل العمليات في سجل التوريدات
         const { data: userData } = await supabaseClient.auth.getUser();
-        const userId = (userData && userData.user && userData.user.id) || null;
+        var userId = null;
+        if (userData && userData.user && userData.user.id) {
+            userId = userData.user.id;
+        }
 
-        // تسجيل المرتجع
-        await supabaseClient
-            .from('branch_transfers')
-            .insert({
-                from_branch_id: branchId,
-                to_branch_id: null,
-                product_id: oldProductId,
-                quantity: quantity,
-                transfer_type: 'customer_return',
-                notes: notes || 'مرتجع استبدال',
-                created_by: userId
-            });
+        await supabaseClient.from("branch_transfers").insert({
+            from_branch_id: branchId,
+            to_branch_id: null,
+            product_id: oldProductId,
+            quantity: quantity,
+            transfer_type: "customer_return",
+            notes: notes || "مرتجع استبدال",
+            created_by: userId,
+        });
 
-        // تسجيل التوريد الجديد
-        await supabaseClient
-            .from('branch_transfers')
-            .insert({
-                from_branch_id: null,
-                to_branch_id: branchId,
-                product_id: newProductId,
-                quantity: quantity,
-                transfer_type: 'exchange',
-                notes: notes || 'توريد استبدال',
-                created_by: userId
-            });
+        await supabaseClient.from("branch_transfers").insert({
+            from_branch_id: null,
+            to_branch_id: branchId,
+            product_id: newProductId,
+            quantity: quantity,
+            transfer_type: "exchange",
+            notes: notes || "توريد استبدال",
+            created_by: userId,
+        });
 
-        showMessage(msg, '✅ تم الاستبدال بنجاح', 'success');
-        localStorage.setItem('stockUpdated', Date.now());
+        showMessage(msg, "✅ تم الاستبدال بنجاح", "success");
+        localStorage.setItem("stockUpdated", Date.now());
 
         setTimeout(() => {
-            const modalElement = document.getElementById('exchangeModal');
+            const modalElement = document.getElementById("exchangeModal");
             if (modalElement) {
-                const closeBtn = modalElement.querySelector('.btn-close');
+                const closeBtn = modalElement.querySelector(".btn-close");
                 if (closeBtn) closeBtn.click();
             }
             loadTransfers();
         }, 1500);
-
     } catch (error) {
-        console.error('Error:', error);
-        showMessage(msg, '❌ فشل الاستبدال: ' + error.message, 'danger');
+        console.error("Error:", error);
+        showMessage(msg, "❌ فشل الاستبدال: " + error.message, "danger");
     }
 }
 
