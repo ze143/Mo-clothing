@@ -66,7 +66,6 @@ async function loadTransfers() {
         const branchId = document.getElementById("filterBranch").value;
         const productId = document.getElementById("filterProduct").value;
 
-        // ✅ استخدم الجدول مباشرة (مش الـ View)
         let query = supabaseClient.from("branch_transfers").select(`
                 *,
                 from_branch:branches!from_branch_id(name),
@@ -105,7 +104,7 @@ function displayTransfers(data) {
 
     if (data.length === 0) {
         tbody.innerHTML =
-            '<tr><td colspan="7" class="text-center text-muted">لا توجد توريدات</td></tr>';
+            '<tr><td colspan="8" class="text-center text-muted">لا توجد توريدات</td></tr>';
         return;
     }
 
@@ -130,14 +129,19 @@ function displayTransfers(data) {
                 typeNames[transfer.transfer_type] || transfer.transfer_type;
             const typeColor = typeColors[transfer.transfer_type] || "secondary";
 
+            // ✅ استخدام الـ alias من الـ select
+            const fromBranchName = transfer.from_branch && transfer.from_branch.name ? transfer.from_branch.name : "المخزن";
+            const toBranchName = transfer.to_branch && transfer.to_branch.name ? transfer.to_branch.name : "المخزن";
+            const productName = transfer.products && transfer.products.name ? transfer.products.name : "غير معروف";
+
             return `
             <tr>
                 <td>${index + 1}</td>
                 <td>${new Date(transfer.transfer_date).toLocaleDateString("ar")}</td>
                 <td><span class="badge bg-${typeColor}">${typeName}</span></td>
-                <td>${transfer.from_branch_name || "المخزن"}</td>
-                <td>${transfer.to_branch_name || "المخزن"}</td>
-                <td>${transfer.product_name || "غير معروف"}</td>
+                <td>${fromBranchName}</td>
+                <td>${toBranchName}</td>
+                <td>${productName}</td>
                 <td><span class="badge bg-primary">${transfer.quantity}</span></td>
                 <td>${transfer.notes || "-"}</td>
             </tr>
@@ -155,9 +159,15 @@ function updateStatistics(data) {
         return;
     }
 
-    const totalItems = data.reduce((sum, t) => sum + (t.quantity || 0), 0);
-    const uniqueBranches = new Set(data.map((t) => t.to_branch_id)).size;
-    const uniqueDays = new Set(data.map((t) => t.transfer_date)).size;
+    const totalItems = data.reduce(function(sum, t) {
+        return sum + (t.quantity || 0);
+    }, 0);
+    const uniqueBranches = new Set(data.map(function(t) {
+        return t.to_branch_id;
+    })).size;
+    const uniqueDays = new Set(data.map(function(t) {
+        return t.transfer_date;
+    })).size;
 
     document.getElementById("totalTransfers").textContent = data.length;
     document.getElementById("totalItems").textContent = totalItems;
@@ -175,9 +185,9 @@ function resetFilters() {
 
 function exportTransfers() {
     const table = document.getElementById("transfersTable");
-    let csv = [];
+    var csv = [];
 
-    const headers = [
+    var headers = [
         "التاريخ",
         "النوع",
         "من",
@@ -188,24 +198,24 @@ function exportTransfers() {
     ];
     csv.push(headers.join(","));
 
-    const rows = document.querySelectorAll("#transfersBody tr");
-    rows.forEach((row) => {
-        const cols = row.querySelectorAll("td");
+    var rows = document.querySelectorAll("#transfersBody tr");
+    rows.forEach(function(row) {
+        var cols = row.querySelectorAll("td");
         if (cols.length > 1) {
-            const rowData = [];
-            for (let i = 1; i < cols.length; i++) {
+            var rowData = [];
+            for (var i = 1; i < cols.length; i++) {
                 rowData.push(cols[i].textContent.trim());
             }
             csv.push(rowData.join(","));
         }
     });
 
-    const blob = new Blob(["\uFEFF" + csv.join("\n")], {
+    var blob = new Blob(["\uFEFF" + csv.join("\n")], {
         type: "text/csv;charset=utf-8;",
     });
-    const link = document.createElement("a");
+    var link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `توريدات_الفروع_${new Date().toISOString().split("T")[0]}.csv`;
+    link.download = "توريدات_الفروع_" + new Date().toISOString().split("T")[0] + ".csv";
     link.click();
 }
 
@@ -213,16 +223,16 @@ function exportTransfers() {
 // دوال التحويلات والمرتجعات
 // =============================================
 
-let supplyModal = null;
-let transferModal = null;
-let returnModal = null;
+var supplyModal = null;
+var transferModal = null;
+var returnModal = null;
 
 function showSupplyModal() {
     window.location.href = "warehouse.html";
 }
 
 function showTransferModal() {
-    const modalHtml = `
+    var modalHtml = `
         <div class="modal fade" id="transferModal" tabindex="-1">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -276,7 +286,7 @@ function showTransferModal() {
         </div>
     `;
 
-    const oldModal = document.getElementById("transferModal");
+    var oldModal = document.getElementById("transferModal");
     if (oldModal) oldModal.remove();
 
     document.body.insertAdjacentHTML("beforeend", modalHtml);
@@ -301,7 +311,7 @@ function showTransferModal() {
 }
 
 function showReturnModal() {
-    const modalHtml = `
+    var modalHtml = `
         <div class="modal fade" id="returnModal" tabindex="-1">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -349,7 +359,7 @@ function showReturnModal() {
         </div>
     `;
 
-    const oldModal = document.getElementById("returnModal");
+    var oldModal = document.getElementById("returnModal");
     if (oldModal) oldModal.remove();
 
     document.body.insertAdjacentHTML("beforeend", modalHtml);
@@ -379,20 +389,20 @@ function showReturnModal() {
 
 async function loadBranchesForTransfer() {
     try {
-        const { data, error } = await supabaseClient
+        var { data, error } = await supabaseClient
             .from("branches")
             .select("*")
             .order("name");
 
         if (error) throw error;
 
-        const selects = ["transferFromBranch", "transferToBranch"];
-        selects.forEach((id) => {
-            const select = document.getElementById(id);
+        var selects = ["transferFromBranch", "transferToBranch"];
+        selects.forEach(function(id) {
+            var select = document.getElementById(id);
             if (select) {
                 select.innerHTML = '<option value="">اختر الفرع</option>';
-                data.forEach((branch) => {
-                    select.innerHTML += `<option value="${branch.id}">${branch.name}</option>`;
+                data.forEach(function(branch) {
+                    select.innerHTML += '<option value="' + branch.id + '">' + branch.name + '</option>';
                 });
             }
         });
@@ -403,18 +413,18 @@ async function loadBranchesForTransfer() {
 
 async function loadProductsForTransfer() {
     try {
-        const { data, error } = await supabaseClient
+        var { data, error } = await supabaseClient
             .from("products")
             .select("*")
             .order("name");
 
         if (error) throw error;
 
-        const select = document.getElementById("transferProduct");
+        var select = document.getElementById("transferProduct");
         if (select) {
             select.innerHTML = '<option value="">اختر المنتج</option>';
-            data.forEach((product) => {
-                select.innerHTML += `<option value="${product.id}">${product.name}</option>`;
+            data.forEach(function(product) {
+                select.innerHTML += '<option value="' + product.id + '">' + product.name + '</option>';
             });
         }
     } catch (error) {
@@ -423,9 +433,9 @@ async function loadProductsForTransfer() {
 }
 
 async function updateAvailableStockForTransfer() {
-    const branchId = document.getElementById("transferFromBranch").value;
-    const productId = document.getElementById("transferProduct").value;
-    const stockElement = document.getElementById("transferAvailableStock");
+    var branchId = document.getElementById("transferFromBranch").value;
+    var productId = document.getElementById("transferProduct").value;
+    var stockElement = document.getElementById("transferAvailableStock");
 
     if (!branchId || !productId) {
         stockElement.value = "اختر الفرع والمنتج أولاً";
@@ -433,7 +443,7 @@ async function updateAvailableStockForTransfer() {
     }
 
     try {
-        const { data, error } = await supabaseClient
+        var { data, error } = await supabaseClient
             .from("branch_stock")
             .select("quantity")
             .eq("branch_id", branchId)
@@ -442,7 +452,7 @@ async function updateAvailableStockForTransfer() {
 
         if (error && error.code !== "PGRST116") throw error;
 
-        stockElement.value = `${(data && data.quantity) || 0} قطعة`;
+        stockElement.value = ((data && data.quantity) || 0) + " قطعة";
     } catch (error) {
         console.error("Error loading stock:", error);
         stockElement.value = "خطأ في التحميل";
@@ -450,12 +460,12 @@ async function updateAvailableStockForTransfer() {
 }
 
 async function executeTransfer() {
-    const fromBranchId = document.getElementById("transferFromBranch").value;
-    const toBranchId = document.getElementById("transferToBranch").value;
-    const productId = document.getElementById("transferProduct").value;
-    const quantity = parseInt(document.getElementById("transferQuantity").value);
-    const notes = document.getElementById("transferNotes").value;
-    const msg = document.getElementById("transferMessage");
+    var fromBranchId = document.getElementById("transferFromBranch").value;
+    var toBranchId = document.getElementById("transferToBranch").value;
+    var productId = document.getElementById("transferProduct").value;
+    var quantity = parseInt(document.getElementById("transferQuantity").value);
+    var notes = document.getElementById("transferNotes").value;
+    var msg = document.getElementById("transferMessage");
 
     if (!fromBranchId || !toBranchId || !productId || !quantity) {
         showMessage(msg, "يرجى ملء جميع الحقول المطلوبة", "danger");
@@ -468,7 +478,7 @@ async function executeTransfer() {
     }
 
     try {
-        const { data: fromStock, error: fromError } = await supabaseClient
+        var { data: fromStock, error: fromError } = await supabaseClient
             .from("branch_stock")
             .select("quantity")
             .eq("branch_id", fromBranchId)
@@ -477,11 +487,11 @@ async function executeTransfer() {
 
         if (fromError && fromError.code !== "PGRST116") throw fromError;
 
-        const available = (fromStock && fromStock.quantity) || 0;
+        var available = (fromStock && fromStock.quantity) || 0;
         if (available < quantity) {
             showMessage(
                 msg,
-                `الكمية المتاحة (${available}) أقل من المطلوب (${quantity})`,
+                "الكمية المتاحة (" + available + ") أقل من المطلوب (" + quantity + ")",
                 "danger",
             );
             return;
@@ -493,7 +503,7 @@ async function executeTransfer() {
             .eq("branch_id", fromBranchId)
             .eq("product_id", productId);
 
-        const { data: toStock, error: toError } = await supabaseClient
+        var { data: toStock, error: toError } = await supabaseClient
             .from("branch_stock")
             .select("quantity")
             .eq("branch_id", toBranchId)
@@ -516,7 +526,12 @@ async function executeTransfer() {
             });
         }
 
-        const { data: userData } = await supabaseClient.auth.getUser();
+        var { data: userData } = await supabaseClient.auth.getUser();
+        var userId = null;
+        if (userData && userData.user && userData.user.id) {
+            userId = userData.user.id;
+        }
+
         await supabaseClient.from("branch_transfers").insert({
             from_branch_id: fromBranchId,
             to_branch_id: toBranchId,
@@ -524,11 +539,11 @@ async function executeTransfer() {
             quantity: quantity,
             transfer_type: "transfer",
             notes: notes || "تحويل بين الفروع",
-            created_by: (userData && userData.user && userData.user.id) || null,
+            created_by: userId,
         });
 
         showMessage(msg, "✅ تم التحويل بنجاح", "success");
-        setTimeout(() => {
+        setTimeout(function() {
             transferModal.hide();
             loadTransfers();
         }, 1500);
@@ -544,18 +559,18 @@ async function executeTransfer() {
 
 async function loadBranchesForReturn() {
     try {
-        const { data, error } = await supabaseClient
+        var { data, error } = await supabaseClient
             .from("branches")
             .select("*")
             .order("name");
 
         if (error) throw error;
 
-        const select = document.getElementById("returnBranch");
+        var select = document.getElementById("returnBranch");
         if (select) {
             select.innerHTML = '<option value="">اختر الفرع</option>';
-            data.forEach((branch) => {
-                select.innerHTML += `<option value="${branch.id}">${branch.name}</option>`;
+            data.forEach(function(branch) {
+                select.innerHTML += '<option value="' + branch.id + '">' + branch.name + '</option>';
             });
         }
     } catch (error) {
@@ -565,18 +580,18 @@ async function loadBranchesForReturn() {
 
 async function loadProductsForReturn() {
     try {
-        const { data, error } = await supabaseClient
+        var { data, error } = await supabaseClient
             .from("products")
             .select("*")
             .order("name");
 
         if (error) throw error;
 
-        const select = document.getElementById("returnProduct");
+        var select = document.getElementById("returnProduct");
         if (select) {
             select.innerHTML = '<option value="">اختر المنتج</option>';
-            data.forEach((product) => {
-                select.innerHTML += `<option value="${product.id}">${product.name}</option>`;
+            data.forEach(function(product) {
+                select.innerHTML += '<option value="' + product.id + '">' + product.name + '</option>';
             });
         }
     } catch (error) {
@@ -585,9 +600,9 @@ async function loadProductsForReturn() {
 }
 
 async function updateAvailableStockForReturn() {
-    const branchId = document.getElementById("returnBranch").value;
-    const productId = document.getElementById("returnProduct").value;
-    const stockElement = document.getElementById("returnAvailableStock");
+    var branchId = document.getElementById("returnBranch").value;
+    var productId = document.getElementById("returnProduct").value;
+    var stockElement = document.getElementById("returnAvailableStock");
 
     if (!branchId || !productId) {
         stockElement.value = "اختر الفرع والمنتج أولاً";
@@ -595,7 +610,7 @@ async function updateAvailableStockForReturn() {
     }
 
     try {
-        const { data, error } = await supabaseClient
+        var { data, error } = await supabaseClient
             .from("branch_stock")
             .select("quantity")
             .eq("branch_id", branchId)
@@ -604,7 +619,7 @@ async function updateAvailableStockForReturn() {
 
         if (error && error.code !== "PGRST116") throw error;
 
-        stockElement.value = `${(data && data.quantity) || 0} قطعة`;
+        stockElement.value = ((data && data.quantity) || 0) + " قطعة";
     } catch (error) {
         console.error("Error loading stock:", error);
         stockElement.value = "خطأ في التحميل";
@@ -612,11 +627,11 @@ async function updateAvailableStockForReturn() {
 }
 
 async function executeReturn() {
-    const branchId = document.getElementById("returnBranch").value;
-    const productId = document.getElementById("returnProduct").value;
-    const quantity = parseInt(document.getElementById("returnQuantity").value);
-    const notes = document.getElementById("returnNotes").value;
-    const msg = document.getElementById("returnMessage");
+    var branchId = document.getElementById("returnBranch").value;
+    var productId = document.getElementById("returnProduct").value;
+    var quantity = parseInt(document.getElementById("returnQuantity").value);
+    var notes = document.getElementById("returnNotes").value;
+    var msg = document.getElementById("returnMessage");
 
     if (!branchId || !productId || !quantity) {
         showMessage(msg, "يرجى ملء جميع الحقول المطلوبة", "danger");
@@ -624,7 +639,7 @@ async function executeReturn() {
     }
 
     try {
-        const { data: branchStock, error: branchError } = await supabaseClient
+        var { data: branchStock, error: branchError } = await supabaseClient
             .from("branch_stock")
             .select("quantity")
             .eq("branch_id", branchId)
@@ -633,11 +648,11 @@ async function executeReturn() {
 
         if (branchError && branchError.code !== "PGRST116") throw branchError;
 
-        const available = (branchStock && branchStock.quantity) || 0;
+        var available = (branchStock && branchStock.quantity) || 0;
         if (available < quantity) {
             showMessage(
                 msg,
-                `الكمية المتاحة (${available}) أقل من المطلوب (${quantity})`,
+                "الكمية المتاحة (" + available + ") أقل من المطلوب (" + quantity + ")",
                 "danger",
             );
             return;
@@ -649,7 +664,7 @@ async function executeReturn() {
             .eq("branch_id", branchId)
             .eq("product_id", productId);
 
-        const { data: warehouseData, error: warehouseError } = await supabaseClient
+        var { data: warehouseData, error: warehouseError } = await supabaseClient
             .from("warehouse_stock")
             .select("quantity")
             .eq("product_id", productId)
@@ -673,7 +688,12 @@ async function executeReturn() {
             });
         }
 
-        const { data: userData } = await supabaseClient.auth.getUser();
+        var { data: userData } = await supabaseClient.auth.getUser();
+        var userId = null;
+        if (userData && userData.user && userData.user.id) {
+            userId = userData.user.id;
+        }
+
         await supabaseClient.from("branch_transfers").insert({
             from_branch_id: branchId,
             to_branch_id: null,
@@ -681,11 +701,11 @@ async function executeReturn() {
             quantity: quantity,
             transfer_type: "return",
             notes: notes || "مرتجع للمخزن",
-            created_by: (userData && userData.user && userData.user.id) || null,
+            created_by: userId,
         });
 
         showMessage(msg, "✅ تم المرتجع بنجاح", "success");
-        setTimeout(() => {
+        setTimeout(function() {
             returnModal.hide();
             loadTransfers();
         }, 1500);
@@ -697,7 +717,7 @@ async function executeReturn() {
 
 function showMessage(element, message, type) {
     element.textContent = message;
-    element.className = `alert alert-${type}`;
+    element.className = "alert alert-" + type;
     element.classList.remove("d-none");
 }
 
@@ -706,7 +726,7 @@ function showMessage(element, message, type) {
 // =============================================
 
 function showSupplyModal() {
-    const modal = document.getElementById("supplyModal");
+    var modal = document.getElementById("supplyModal");
     if (!modal) {
         alert("خطأ: مودال التوريد غير موجود");
         return;
@@ -732,18 +752,18 @@ function showSupplyModal() {
 
 async function loadBranchesForSupply() {
     try {
-        const { data, error } = await supabaseClient
+        var { data, error } = await supabaseClient
             .from("branches")
             .select("*")
             .order("name");
 
         if (error) throw error;
 
-        const select = document.getElementById("supplyBranch");
+        var select = document.getElementById("supplyBranch");
         if (select) {
             select.innerHTML = '<option value="">اختر الفرع</option>';
-            data.forEach((branch) => {
-                select.innerHTML += `<option value="${branch.id}">${branch.name}</option>`;
+            data.forEach(function(branch) {
+                select.innerHTML += '<option value="' + branch.id + '">' + branch.name + '</option>';
             });
         }
     } catch (error) {
@@ -753,18 +773,18 @@ async function loadBranchesForSupply() {
 
 async function loadProductsForSupply() {
     try {
-        const { data, error } = await supabaseClient
+        var { data, error } = await supabaseClient
             .from("products")
             .select("*")
             .order("name");
 
         if (error) throw error;
 
-        const select = document.getElementById("supplyProduct");
+        var select = document.getElementById("supplyProduct");
         if (select) {
             select.innerHTML = '<option value="">اختر المنتج</option>';
-            data.forEach((product) => {
-                select.innerHTML += `<option value="${product.id}">${product.name}</option>`;
+            data.forEach(function(product) {
+                select.innerHTML += '<option value="' + product.id + '">' + product.name + '</option>';
             });
         }
     } catch (error) {
@@ -773,8 +793,8 @@ async function loadProductsForSupply() {
 }
 
 async function updateAvailableStockForSupply() {
-    const productId = document.getElementById("supplyProduct").value;
-    const stockElement = document.getElementById("supplyAvailableStock");
+    var productId = document.getElementById("supplyProduct").value;
+    var stockElement = document.getElementById("supplyAvailableStock");
 
     if (!productId) {
         stockElement.value = "اختر المنتج أولاً";
@@ -782,7 +802,7 @@ async function updateAvailableStockForSupply() {
     }
 
     try {
-        const { data, error } = await supabaseClient
+        var { data, error } = await supabaseClient
             .from("warehouse_stock")
             .select("quantity")
             .eq("product_id", productId)
@@ -790,7 +810,7 @@ async function updateAvailableStockForSupply() {
 
         if (error && error.code !== "PGRST116") throw error;
 
-        stockElement.value = `${(data && data.quantity) || 0} قطعة`;
+        stockElement.value = ((data && data.quantity) || 0) + " قطعة";
     } catch (error) {
         console.error("Error loading stock:", error);
         stockElement.value = "خطأ في التحميل";
@@ -798,11 +818,11 @@ async function updateAvailableStockForSupply() {
 }
 
 async function executeSupply() {
-    const branchId = document.getElementById("supplyBranch").value;
-    const productId = document.getElementById("supplyProduct").value;
-    const quantity = parseInt(document.getElementById("supplyQuantity").value);
-    const notes = document.getElementById("supplyNotes").value;
-    const msg = document.getElementById("supplyMessage");
+    var branchId = document.getElementById("supplyBranch").value;
+    var productId = document.getElementById("supplyProduct").value;
+    var quantity = parseInt(document.getElementById("supplyQuantity").value);
+    var notes = document.getElementById("supplyNotes").value;
+    var msg = document.getElementById("supplyMessage");
 
     if (!branchId || !productId || !quantity) {
         showMessage(msg, "يرجى ملء جميع الحقول المطلوبة", "danger");
@@ -810,7 +830,7 @@ async function executeSupply() {
     }
 
     try {
-        const { data: warehouseData, error: warehouseError } = await supabaseClient
+        var { data: warehouseData, error: warehouseError } = await supabaseClient
             .from("warehouse_stock")
             .select("quantity")
             .eq("product_id", productId)
@@ -819,11 +839,11 @@ async function executeSupply() {
         if (warehouseError && warehouseError.code !== "PGRST116")
             throw warehouseError;
 
-        const available = (warehouseData && warehouseData.quantity) || 0;
+        var available = (warehouseData && warehouseData.quantity) || 0;
         if (available < quantity) {
             showMessage(
                 msg,
-                `الكمية المتاحة (${available}) أقل من المطلوب (${quantity})`,
+                "الكمية المتاحة (" + available + ") أقل من المطلوب (" + quantity + ")",
                 "danger",
             );
             return;
@@ -834,7 +854,7 @@ async function executeSupply() {
             .update({ quantity: available - quantity })
             .eq("product_id", productId);
 
-        const { data: branchStockData, error: branchStockError } =
+        var { data: branchStockData, error: branchStockError } =
         await supabaseClient
             .from("branch_stock")
             .select("quantity")
@@ -862,7 +882,12 @@ async function executeSupply() {
             });
         }
 
-        const { data: userData } = await supabaseClient.auth.getUser();
+        var { data: userData } = await supabaseClient.auth.getUser();
+        var userId = null;
+        if (userData && userData.user && userData.user.id) {
+            userId = userData.user.id;
+        }
+
         await supabaseClient.from("branch_transfers").insert({
             from_branch_id: null,
             to_branch_id: branchId,
@@ -870,17 +895,19 @@ async function executeSupply() {
             quantity: quantity,
             transfer_type: "supply",
             notes: notes || "توريد من المخزن الرئيسي",
-            created_by: (userData && userData.user && userData.user.id) || null,
+            created_by: userId,
         });
 
-        await logActivity("supply_transfer", {
-            to_branch: branchId,
-            product: productId,
-            quantity: quantity,
-        });
+        if (typeof logActivity === "function") {
+            await logActivity("supply_transfer", {
+                to_branch: branchId,
+                product: productId,
+                quantity: quantity,
+            });
+        }
 
         showMessage(msg, "✅ تم التوريد بنجاح", "success");
-        setTimeout(() => {
+        setTimeout(function() {
             supplyModal.hide();
             loadTransfers();
         }, 1500);
@@ -891,11 +918,11 @@ async function executeSupply() {
 }
 
 // =============================================
-// مرتجع من العميل
+// مرتجع من العميل (✅ مُصلح)
 // =============================================
 
 function showCustomerReturnModal() {
-    const modalHtml = `
+    var modalHtml = `
         <div class="modal fade" id="customerReturnModal" tabindex="-1">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -939,12 +966,12 @@ function showCustomerReturnModal() {
         </div>
     `;
 
-    const oldModal = document.getElementById("customerReturnModal");
+    var oldModal = document.getElementById("customerReturnModal");
     if (oldModal) oldModal.remove();
 
     document.body.insertAdjacentHTML("beforeend", modalHtml);
 
-    const modal = new bootstrap.Modal(
+    var modal = new bootstrap.Modal(
         document.getElementById("customerReturnModal"),
     );
 
@@ -956,16 +983,16 @@ function showCustomerReturnModal() {
 
 async function loadBranchesForCustomerReturn() {
     try {
-        const { data, error } = await supabaseClient
+        var { data, error } = await supabaseClient
             .from("branches")
             .select("*")
             .order("name");
         if (error) throw error;
 
-        const select = document.getElementById("customerReturnBranch");
+        var select = document.getElementById("customerReturnBranch");
         select.innerHTML = '<option value="">اختر الفرع</option>';
-        data.forEach((branch) => {
-            select.innerHTML += `<option value="${branch.id}">${branch.name}</option>`;
+        data.forEach(function(branch) {
+            select.innerHTML += '<option value="' + branch.id + '">' + branch.name + '</option>';
         });
     } catch (error) {
         console.error("Error loading branches:", error);
@@ -974,16 +1001,16 @@ async function loadBranchesForCustomerReturn() {
 
 async function loadProductsForCustomerReturn() {
     try {
-        const { data, error } = await supabaseClient
+        var { data, error } = await supabaseClient
             .from("products")
             .select("*")
             .order("name");
         if (error) throw error;
 
-        const select = document.getElementById("customerReturnProduct");
+        var select = document.getElementById("customerReturnProduct");
         select.innerHTML = '<option value="">اختر المنتج</option>';
-        data.forEach((product) => {
-            select.innerHTML += `<option value="${product.id}">${product.name}</option>`;
+        data.forEach(function(product) {
+            select.innerHTML += '<option value="' + product.id + '">' + product.name + '</option>';
         });
     } catch (error) {
         console.error("Error loading products:", error);
@@ -991,13 +1018,11 @@ async function loadProductsForCustomerReturn() {
 }
 
 async function executeCustomerReturn() {
-    const branchId = document.getElementById("customerReturnBranch").value;
-    const productId = document.getElementById("customerReturnProduct").value;
-    const quantity = parseInt(
-        document.getElementById("customerReturnQuantity").value,
-    );
-    const notes = document.getElementById("customerReturnNotes").value;
-    const msg = document.getElementById("customerReturnMessage");
+    var branchId = document.getElementById("customerReturnBranch").value;
+    var productId = document.getElementById("customerReturnProduct").value;
+    var quantity = parseInt(document.getElementById("customerReturnQuantity").value);
+    var notes = document.getElementById("customerReturnNotes").value;
+    var msg = document.getElementById("customerReturnMessage");
 
     if (!branchId || !productId || !quantity) {
         showMessage(msg, "يرجى ملء جميع الحقول المطلوبة", "danger");
@@ -1005,88 +1030,85 @@ async function executeCustomerReturn() {
     }
 
     try {
-        const { data: stockData, error: stockError } = await supabaseClient
+        // 1. زيادة مخزون الفرع (العميل رجع المنتج)
+        var { data: stockData, error: stockError } = await supabaseClient
             .from("branch_stock")
             .select("quantity")
             .eq("branch_id", branchId)
             .eq("product_id", productId)
             .maybeSingle();
 
-        if (stockError) {
-            console.error("Stock error:", stockError);
-            showMessage(msg, "خطأ في جلب المخزون", "danger");
-            return;
-        }
+        if (stockError) throw stockError;
 
-        const currentQty = (stockData && stockData.quantity) || 0;
-        const newQty = currentQty + quantity;
+        var currentQty = (stockData && stockData.quantity) || 0;
+        var newQty = currentQty + quantity;
 
         if (stockData) {
-            const { error: updateError } = await supabaseClient
+            await supabaseClient
                 .from("branch_stock")
-                .update({
-                    quantity: newQty,
-                    updated_at: new Date().toISOString(),
-                })
+                .update({ quantity: newQty })
                 .eq("branch_id", branchId)
                 .eq("product_id", productId);
-
-            if (updateError) {
-                console.error("Update error:", updateError);
-                showMessage(msg, "فشل تحديث المخزون", "danger");
-                return;
-            }
         } else {
-            const { error: insertError } = await supabaseClient
-                .from("branch_stock")
-                .insert({
-                    branch_id: branchId,
-                    product_id: productId,
-                    quantity: quantity,
-                });
-
-            if (insertError) {
-                console.error("Insert error:", insertError);
-                showMessage(msg, "فشل إضافة المخزون", "danger");
-                return;
-            }
+            await supabaseClient.from("branch_stock").insert({
+                branch_id: branchId,
+                product_id: productId,
+                quantity: quantity
+            });
         }
 
-        const { data: userData } = await supabaseClient.auth.getUser();
+        // 2. ✅ تحديث المخزن الرئيسي (يزيد لأن العميل رجع المنتج)
+        var { data: warehouseData, error: warehouseError } = await supabaseClient
+            .from("warehouse_stock")
+            .select("quantity")
+            .eq("product_id", productId)
+            .maybeSingle();
+
+        if (warehouseError && warehouseError.code !== "PGRST116") throw warehouseError;
+
+        var warehouseQty = (warehouseData && warehouseData.quantity) || 0;
+        var newWarehouseQty = warehouseQty + quantity; // ✅ يزيد المخزن
+
+        if (warehouseData) {
+            await supabaseClient
+                .from("warehouse_stock")
+                .update({ quantity: newWarehouseQty })
+                .eq("product_id", productId);
+        } else {
+            await supabaseClient.from("warehouse_stock").insert({
+                product_id: productId,
+                quantity: quantity
+            });
+        }
+
+        // 3. تسجيل الحركة
+        var { data: userData } = await supabaseClient.auth.getUser();
         var userId = null;
         if (userData && userData.user && userData.user.id) {
             userId = userData.user.id;
         }
 
-        const { error: transferError } = await supabaseClient
-            .from("branch_transfers")
-            .insert({
-                from_branch_id: branchId,
-                to_branch_id: null,
-                product_id: productId,
-                quantity: quantity,
-                transfer_type: "customer_return",
-                notes: notes || "مرتجع من العميل",
-                created_by: userId,
-            });
-
-        if (transferError) {
-            console.error("Transfer error:", transferError);
-            showMessage(msg, "فشل تسجيل المرتجع", "danger");
-            return;
-        }
+        await supabaseClient.from("branch_transfers").insert({
+            from_branch_id: branchId,
+            to_branch_id: null,
+            product_id: productId,
+            quantity: quantity,
+            transfer_type: "customer_return",
+            notes: notes || "مرتجع من العميل",
+            created_by: userId
+        });
 
         showMessage(msg, "✅ تم إرجاع الكمية بنجاح", "success");
-        localStorage.setItem("stockUpdated", Date.now());
 
-        setTimeout(() => {
-            const modalElement = document.getElementById("customerReturnModal");
+        setTimeout(function() {
+            var modalElement = document.getElementById("customerReturnModal");
             if (modalElement) {
-                const closeBtn = modalElement.querySelector(".btn-close");
+                var closeBtn = modalElement.querySelector(".btn-close");
                 if (closeBtn) closeBtn.click();
             }
             loadTransfers();
         }, 1500);
+
     } catch (error) {
         console.error("Error:", error);
         showMessage(msg, "❌ فشل المرتجع: " + error.message, "danger");
@@ -1094,11 +1116,11 @@ async function executeCustomerReturn() {
 }
 
 // =============================================
-// استبدال منتج
+// استبدال منتج (✅ مُصلح)
 // =============================================
 
 function showExchangeModal() {
-    const modalHtml = `
+    var modalHtml = `
         <div class="modal fade" id="exchangeModal" tabindex="-1">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -1148,12 +1170,12 @@ function showExchangeModal() {
         </div>
     `;
 
-    const oldModal = document.getElementById("exchangeModal");
+    var oldModal = document.getElementById("exchangeModal");
     if (oldModal) oldModal.remove();
 
     document.body.insertAdjacentHTML("beforeend", modalHtml);
 
-    const modal = new bootstrap.Modal(document.getElementById("exchangeModal"));
+    var modal = new bootstrap.Modal(document.getElementById("exchangeModal"));
 
     loadBranchesForExchange();
     loadProductsForExchange();
@@ -1163,16 +1185,16 @@ function showExchangeModal() {
 
 async function loadBranchesForExchange() {
     try {
-        const { data, error } = await supabaseClient
+        var { data, error } = await supabaseClient
             .from("branches")
             .select("*")
             .order("name");
         if (error) throw error;
 
-        const select = document.getElementById("exchangeBranch");
+        var select = document.getElementById("exchangeBranch");
         select.innerHTML = '<option value="">اختر الفرع</option>';
-        data.forEach((branch) => {
-            select.innerHTML += `<option value="${branch.id}">${branch.name}</option>`;
+        data.forEach(function(branch) {
+            select.innerHTML += '<option value="' + branch.id + '">' + branch.name + '</option>';
         });
     } catch (error) {
         console.error("Error loading branches:", error);
@@ -1181,18 +1203,18 @@ async function loadBranchesForExchange() {
 
 async function loadProductsForExchange() {
     try {
-        const { data, error } = await supabaseClient
+        var { data, error } = await supabaseClient
             .from("products")
             .select("*")
             .order("name");
         if (error) throw error;
 
-        const selects = ["exchangeOldProduct", "exchangeNewProduct"];
-        selects.forEach((id) => {
-            const select = document.getElementById(id);
+        var selects = ["exchangeOldProduct", "exchangeNewProduct"];
+        selects.forEach(function(id) {
+            var select = document.getElementById(id);
             select.innerHTML = '<option value="">اختر المنتج</option>';
-            data.forEach((product) => {
-                select.innerHTML += `<option value="${product.id}">${product.name}</option>`;
+            data.forEach(function(product) {
+                select.innerHTML += '<option value="' + product.id + '">' + product.name + '</option>';
             });
         });
     } catch (error) {
@@ -1201,12 +1223,12 @@ async function loadProductsForExchange() {
 }
 
 async function executeExchange() {
-    const branchId = document.getElementById("exchangeBranch").value;
-    const oldProductId = document.getElementById("exchangeOldProduct").value;
-    const newProductId = document.getElementById("exchangeNewProduct").value;
-    const quantity = parseInt(document.getElementById("exchangeQuantity").value);
-    const notes = document.getElementById("exchangeNotes").value;
-    const msg = document.getElementById("exchangeMessage");
+    var branchId = document.getElementById("exchangeBranch").value;
+    var oldProductId = document.getElementById("exchangeOldProduct").value;
+    var newProductId = document.getElementById("exchangeNewProduct").value;
+    var quantity = parseInt(document.getElementById("exchangeQuantity").value);
+    var notes = document.getElementById("exchangeNotes").value;
+    var msg = document.getElementById("exchangeMessage");
 
     if (!branchId || !oldProductId || !newProductId || !quantity) {
         showMessage(msg, "يرجى ملء جميع الحقول المطلوبة", "danger");
@@ -1219,78 +1241,117 @@ async function executeExchange() {
     }
 
     try {
-        const { data: oldStock, error: oldError } = await supabaseClient
+        // ====== الخطوة 1: زيادة المنتج القديم في الفرع ======
+        var { data: oldStock, error: oldError } = await supabaseClient
             .from("branch_stock")
             .select("quantity")
             .eq("branch_id", branchId)
             .eq("product_id", oldProductId)
             .maybeSingle();
 
-        if (oldError) {
-            console.error("Old stock error:", oldError);
-            showMessage(msg, "خطأ في جلب المخزون القديم", "danger");
-            return;
-        }
+        if (oldError) throw oldError;
 
-        const oldCurrentQty = (oldStock && oldStock.quantity) || 0;
-        const oldNewQty = oldCurrentQty + quantity;
+        var oldCurrentQty = (oldStock && oldStock.quantity) || 0;
+        var oldNewQty = oldCurrentQty + quantity; // العميل رجع القديم
 
         if (oldStock) {
             await supabaseClient
                 .from("branch_stock")
-                .update({
-                    quantity: oldNewQty,
-                    updated_at: new Date().toISOString(),
-                })
+                .update({ quantity: oldNewQty })
                 .eq("branch_id", branchId)
                 .eq("product_id", oldProductId);
         } else {
             await supabaseClient.from("branch_stock").insert({
                 branch_id: branchId,
                 product_id: oldProductId,
-                quantity: quantity,
+                quantity: quantity
             });
         }
 
-        const { data: newStock, error: newError } = await supabaseClient
+        // ====== الخطوة 2: نقص المنتج الجديد من الفرع ======
+        var { data: newStock, error: newError } = await supabaseClient
             .from("branch_stock")
             .select("quantity")
             .eq("branch_id", branchId)
             .eq("product_id", newProductId)
             .maybeSingle();
 
-        if (newError) {
-            console.error("New stock error:", newError);
-            showMessage(msg, "خطأ في جلب المخزون الجديد", "danger");
-            return;
-        }
+        if (newError) throw newError;
 
-        const newCurrentQty = (newStock && newStock.quantity) || 0;
-        const newNewQty = Math.max(0, newCurrentQty - quantity);
+        var newCurrentQty = (newStock && newStock.quantity) || 0;
+        var newNewQty = Math.max(0, newCurrentQty - quantity); // العميل أخذ الجديد
 
         if (newStock) {
             await supabaseClient
                 .from("branch_stock")
-                .update({
-                    quantity: newNewQty,
-                    updated_at: new Date().toISOString(),
-                })
+                .update({ quantity: newNewQty })
                 .eq("branch_id", branchId)
                 .eq("product_id", newProductId);
         } else {
             await supabaseClient.from("branch_stock").insert({
                 branch_id: branchId,
                 product_id: newProductId,
-                quantity: 0,
+                quantity: 0
             });
         }
 
-        const { data: userData } = await supabaseClient.auth.getUser();
+        // ====== الخطوة 3: ✅ تحديث المخزن الرئيسي ======
+        // 3أ: المخزن يستقبل المنتج القديم (العميل رجعه) - يزيد
+        var { data: warehouseOld, error: warehouseOldError } = await supabaseClient
+            .from("warehouse_stock")
+            .select("quantity")
+            .eq("product_id", oldProductId)
+            .maybeSingle();
+
+        if (warehouseOldError && warehouseOldError.code !== "PGRST116") throw warehouseOldError;
+
+        var warehouseOldQty = (warehouseOld && warehouseOld.quantity) || 0;
+        var newWarehouseOldQty = warehouseOldQty + quantity;
+
+        if (warehouseOld) {
+            await supabaseClient
+                .from("warehouse_stock")
+                .update({ quantity: newWarehouseOldQty })
+                .eq("product_id", oldProductId);
+        } else {
+            await supabaseClient.from("warehouse_stock").insert({
+                product_id: oldProductId,
+                quantity: quantity
+            });
+        }
+
+        // 3ب: المخزن ينقص المنتج الجديد (العميل أخذه) - ينقص
+        var { data: warehouseNew, error: warehouseNewError } = await supabaseClient
+            .from("warehouse_stock")
+            .select("quantity")
+            .eq("product_id", newProductId)
+            .maybeSingle();
+
+        if (warehouseNewError && warehouseNewError.code !== "PGRST116") throw warehouseNewError;
+
+        var warehouseNewQty = (warehouseNew && warehouseNew.quantity) || 0;
+        var newWarehouseNewQty = Math.max(0, warehouseNewQty - quantity);
+
+        if (warehouseNew) {
+            await supabaseClient
+                .from("warehouse_stock")
+                .update({ quantity: newWarehouseNewQty })
+                .eq("product_id", newProductId);
+        } else {
+            await supabaseClient.from("warehouse_stock").insert({
+                product_id: newProductId,
+                quantity: 0
+            });
+        }
+
+        // ====== الخطوة 4: تسجيل الحركات ======
+        var { data: userData } = await supabaseClient.auth.getUser();
         var userId = null;
         if (userData && userData.user && userData.user.id) {
             userId = userData.user.id;
         }
 
+        // حركة مرتجع القديم
         await supabaseClient.from("branch_transfers").insert({
             from_branch_id: branchId,
             to_branch_id: null,
@@ -1298,9 +1359,10 @@ async function executeExchange() {
             quantity: quantity,
             transfer_type: "customer_return",
             notes: notes || "مرتجع استبدال",
-            created_by: userId,
+            created_by: userId
         });
 
+        // حركة توريد الجديد
         await supabaseClient.from("branch_transfers").insert({
             from_branch_id: null,
             to_branch_id: branchId,
@@ -1308,20 +1370,20 @@ async function executeExchange() {
             quantity: quantity,
             transfer_type: "exchange",
             notes: notes || "توريد استبدال",
-            created_by: userId,
+            created_by: userId
         });
 
         showMessage(msg, "✅ تم الاستبدال بنجاح", "success");
-        localStorage.setItem("stockUpdated", Date.now());
 
-        setTimeout(() => {
-            const modalElement = document.getElementById("exchangeModal");
+        setTimeout(function() {
+            var modalElement = document.getElementById("exchangeModal");
             if (modalElement) {
-                const closeBtn = modalElement.querySelector(".btn-close");
+                var closeBtn = modalElement.querySelector(".btn-close");
                 if (closeBtn) closeBtn.click();
             }
             loadTransfers();
         }, 1500);
+
     } catch (error) {
         console.error("Error:", error);
         showMessage(msg, "❌ فشل الاستبدال: " + error.message, "danger");
