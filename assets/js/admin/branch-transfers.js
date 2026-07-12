@@ -198,11 +198,7 @@ async function loadProducts() {
 }
 
 // ============================================================
-// تحميل وعرض التوريدات
-// ============================================================
-
-// ============================================================
-// تحميل وعرض التوريدات (مُصلح)
+// تحميل وعرض التوريدات (مع الفلاتر)
 // ============================================================
 
 async function loadTransfers() {
@@ -212,11 +208,29 @@ async function loadTransfers() {
         var branchId = document.getElementById("filterBranch").value;
         var productId = document.getElementById("filterProduct").value;
 
-        // ✅ استعلام بدون foreign keys معقدة
-        var { data: transfers, error: transfersError } = await supabaseClient
+        // ✅ بناء الاستعلام مع الفلاتر
+        var query = supabaseClient
             .from("branch_transfers")
-            .select("*")
-            .order("transfer_date", { ascending: false });
+            .select("*");
+
+        // تطبيق الفلاتر على الاستعلام
+        if (dateFrom) {
+            query = query.gte("transfer_date", dateFrom);
+        }
+        if (dateTo) {
+            query = query.lte("transfer_date", dateTo);
+        }
+        if (branchId) {
+            query = query.or(`from_branch_id.eq.${branchId},to_branch_id.eq.${branchId}`);
+        }
+        if (productId) {
+            query = query.eq("product_id", productId);
+        }
+
+        // ترتيب النتائج
+        query = query.order("transfer_date", { ascending: false });
+
+        var { data: transfers, error: transfersError } = await query;
 
         if (transfersError) throw transfersError;
 
@@ -227,46 +241,37 @@ async function loadTransfers() {
         var { data: products } = await supabaseClient
             .from("products")
             .select("id, name");
-        var { data: profiles } = await supabaseClient
-            .from("profiles")
-            .select("id, full_name");
 
         // ربط البيانات يدوياً
-        var data = transfers.map(function(transfer) {
+        var data = [];
+        for (var i = 0; i < transfers.length; i++) {
+            var transfer = transfers[i];
             var fromBranch = null;
             var toBranch = null;
             var product = null;
-            var profile = null;
 
-            for (var i = 0; i < branches.length; i++) {
-                if (branches[i].id === transfer.from_branch_id) {
-                    fromBranch = branches[i];
+            for (var j = 0; j < branches.length; j++) {
+                if (branches[j].id === transfer.from_branch_id) {
+                    fromBranch = branches[j];
                 }
-                if (branches[i].id === transfer.to_branch_id) {
-                    toBranch = branches[i];
-                }
-            }
-
-            for (var j = 0; j < products.length; j++) {
-                if (products[j].id === transfer.product_id) {
-                    product = products[j];
+                if (branches[j].id === transfer.to_branch_id) {
+                    toBranch = branches[j];
                 }
             }
 
-            for (var k = 0; k < profiles.length; k++) {
-                if (profiles[k].id === transfer.created_by) {
-                    profile = profiles[k];
+            for (var k = 0; k < products.length; k++) {
+                if (products[k].id === transfer.product_id) {
+                    product = products[k];
                 }
             }
 
-            return {
+            data.push({
                 ...transfer,
                 from_branch: fromBranch,
                 to_branch: toBranch,
-                products: product,
-                profiles: profile,
-            };
-        });
+                products: product
+            });
+        }
 
         displayTransfers(data);
         updateStatistics(data);
