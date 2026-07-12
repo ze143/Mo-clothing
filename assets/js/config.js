@@ -304,6 +304,214 @@ async function updateWarehouseStock(productId, quantityChange) {
 }
 
 // ============================================================
+// ✅ دوال الربط بين branch_stock و warehouse_stock
+// ============================================================
+
+// ============================================================
+// دالة تحديث مخزون الفرع (مع الربط التلقائي للمخزن)
+// ============================================================
+async function updateBranchStock(branchId, productId, quantityChange) {
+    try {
+        // 1. جلب الكمية الحالية في الفرع
+        const { data: current, error } = await supabaseClient
+            .from("branch_stock")
+            .select("quantity")
+            .eq("branch_id", branchId)
+            .eq("product_id", productId)
+            .maybeSingle();
+
+        if (error && error.code !== "PGRST116") throw error;
+
+        const currentQty = (current && current.quantity) || 0;
+        const newQty = Math.max(0, currentQty + quantityChange);
+
+        // 2. تحديث مخزون الفرع
+        const { error: upsertError } = await supabaseClient
+            .from("branch_stock")
+            .upsert({
+                branch_id: branchId,
+                product_id: productId,
+                quantity: newQty,
+                updated_at: new Date().toISOString(),
+            }, {
+                onConflict: "branch_id, product_id",
+            }, );
+
+        if (upsertError) throw upsertError;
+
+        return {
+            success: true,
+            oldQuantity: currentQty,
+            newQuantity: newQty,
+            change: quantityChange,
+        };
+    } catch (error) {
+        console.error("❌ خطأ في تحديث مخزون الفرع:", error);
+        return {
+            success: false,
+            error: error.message,
+        };
+    }
+}
+
+// ============================================================
+// دالة تحديث المخزن الرئيسي
+// ============================================================
+async function updateWarehouseStock(productId, quantityChange) {
+    try {
+        // 1. جلب الكمية الحالية في المخزن
+        const { data: current, error } = await supabaseClient
+            .from("warehouse_stock")
+            .select("quantity")
+            .eq("product_id", productId)
+            .maybeSingle();
+
+        if (error && error.code !== "PGRST116") throw error;
+
+        const currentQty = (current && current.quantity) || 0;
+        const newQty = Math.max(0, currentQty + quantityChange);
+
+        // 2. تحديث المخزن الرئيسي
+        const { error: upsertError } = await supabaseClient
+            .from("warehouse_stock")
+            .upsert({
+                product_id: productId,
+                quantity: newQty,
+                updated_at: new Date().toISOString(),
+            }, {
+                onConflict: "product_id",
+            }, );
+
+        if (upsertError) throw upsertError;
+
+        return {
+            success: true,
+            oldQuantity: currentQty,
+            newQuantity: newQty,
+            change: quantityChange,
+        };
+    } catch (error) {
+        console.error("❌ خطأ في تحديث المخزن:", error);
+        return {
+            success: false,
+            error: error.message,
+        };
+    }
+}
+
+// ============================================================
+// ✅ دالة الربط: تحديث الفرع والمخزن معاً للاسترجاع والاستبدال
+// ============================================================
+
+async function updateReturnStocks(branchId, productId, quantity) {
+    try {
+        // 1. تحديث الفرع (زيادة)
+        var branchResult = await updateBranchStock(branchId, productId, quantity);
+        if (!branchResult.success) throw new Error(branchResult.error);
+
+        // 2. تحديث المخزن (زيادة نفس الكمية)
+        var warehouseResult = await updateWarehouseStock(productId, quantity);
+        if (!warehouseResult.success) throw new Error(warehouseResult.error);
+
+        return {
+            success: true,
+            branch: branchResult,
+            warehouse: warehouseResult,
+        };
+    } catch (error) {
+        console.error("❌ خطأ في تحديث كلا المخزونين:", error);
+        return {
+            success: false,
+            error: error.message,
+        };
+    }
+}
+
+async function updateExchangeStocks(
+    branchId,
+    oldProductId,
+    newProductId,
+    quantity,
+) {
+    try {
+        // 1. المنتج القديم: الفرع يزيد، المخزن يزيد
+        var oldResult = await updateReturnStocks(branchId, oldProductId, quantity);
+        if (!oldResult.success) throw new Error(oldResult.error);
+
+        // 2. المنتج الجديد: الفرع ينقص، المخزن ينقص
+        var branchResult = await updateBranchStock(
+            branchId,
+            newProductId, -quantity,
+        );
+        if (!branchResult.success) throw new Error(branchResult.error);
+
+        var warehouseResult = await updateWarehouseStock(newProductId, -quantity);
+        if (!warehouseResult.success) throw new Error(warehouseResult.error);
+
+        return {
+            success: true,
+            old: oldResult,
+            new: {
+                branch: branchResult,
+                warehouse: warehouseResult,
+            },
+        };
+    } catch (error) {
+        console.error("❌ خطأ في تحديث كلا المخزونين للاستبدال:", error);
+        return {
+            success: false,
+            error: error.message,
+        };
+    }
+}
+
+// تصدير الدوال للنطاق العام
+window.updateReturnStocks = updateReturnStocks;
+window.updateExchangeStocks = updateExchangeStocks;
+
+// ============================================================
+// ✅ دالة الربط: تحديث الفرع والمخزن معاً
+// ============================================================
+async function updateBothStocks(
+    branchId,
+    productId,
+    branchChange,
+    warehouseChange,
+) {
+    try {
+        // 1. تحديث الفرع
+        const branchResult = await updateBranchStock(
+            branchId,
+            productId,
+            branchChange,
+        );
+        if (!branchResult.success) throw new Error(branchResult.error);
+
+        // 2. تحديث المخزن
+        const warehouseResult = await updateWarehouseStock(
+            productId,
+            warehouseChange,
+        );
+        if (!warehouseResult.success) throw new Error(warehouseResult.error);
+
+        return {
+            success: true,
+            branch: branchResult,
+            warehouse: warehouseResult,
+        };
+    } catch (error) {
+        console.error("❌ خطأ في تحديث كلا المخزونين:", error);
+        return {
+            success: false,
+            error: error.message,
+        };
+    }
+}
+
+// تصدير الدوال للنطاق العام
+window.updateBothStocks = updateBothStocks;
+
+// ============================================================
 // تصدير الدوال للنطاق العام
 // ============================================================
 window.updateBranchStock = updateBranchStock;

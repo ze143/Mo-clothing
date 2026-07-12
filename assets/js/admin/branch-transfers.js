@@ -1,16 +1,148 @@
 // ============================================================
-// سجل التوريدات - نسخة كاملة (مُصلحة)
+// ✅ دوال مساعدة لتحديث المخزون
+// ============================================================
+
+async function updateBranchStock(branchId, productId, quantityChange) {
+    try {
+        var { data: current, error } = await supabaseClient
+            .from("branch_stock")
+            .select("quantity")
+            .eq("branch_id", branchId)
+            .eq("product_id", productId)
+            .maybeSingle();
+
+        if (error && error.code !== "PGRST116") throw error;
+
+        var currentQty = (current && current.quantity) || 0;
+        var newQty = Math.max(0, currentQty + quantityChange);
+
+        var { error: upsertError } = await supabaseClient
+            .from("branch_stock")
+            .upsert({
+                branch_id: branchId,
+                product_id: productId,
+                quantity: newQty,
+                updated_at: new Date().toISOString(),
+            }, {
+                onConflict: "branch_id, product_id",
+            }, );
+
+        if (upsertError) throw upsertError;
+
+        return {
+            success: true,
+            oldQuantity: currentQty,
+            newQuantity: newQty,
+            change: quantityChange,
+        };
+    } catch (error) {
+        console.error("❌ خطأ في تحديث مخزون الفرع:", error);
+        return {
+            success: false,
+            error: error.message,
+        };
+    }
+}
+
+async function updateWarehouseStock(productId, quantityChange) {
+    try {
+        var { data: current, error } = await supabaseClient
+            .from("warehouse_stock")
+            .select("quantity")
+            .eq("product_id", productId)
+            .maybeSingle();
+
+        if (error && error.code !== "PGRST116") throw error;
+
+        var currentQty = (current && current.quantity) || 0;
+        var newQty = Math.max(0, currentQty + quantityChange);
+
+        var { error: upsertError } = await supabaseClient
+            .from("warehouse_stock")
+            .upsert({
+                product_id: productId,
+                quantity: newQty,
+                updated_at: new Date().toISOString(),
+            }, {
+                onConflict: "product_id",
+            }, );
+
+        if (upsertError) throw upsertError;
+
+        return {
+            success: true,
+            oldQuantity: currentQty,
+            newQuantity: newQty,
+            change: quantityChange,
+        };
+    } catch (error) {
+        console.error("❌ خطأ في تحديث المخزن:", error);
+        return {
+            success: false,
+            error: error.message,
+        };
+    }
+}
+
+// ============================================================
+// ✅ دالة الربط: تحديث الفرع والمخزن معاً
+// ============================================================
+
+async function updateBothStocks(
+    branchId,
+    productId,
+    branchChange,
+    warehouseChange,
+) {
+    try {
+        var branchResult = await updateBranchStock(
+            branchId,
+            productId,
+            branchChange,
+        );
+        if (!branchResult.success) throw new Error(branchResult.error);
+
+        var warehouseResult = await updateWarehouseStock(
+            productId,
+            warehouseChange,
+        );
+        if (!warehouseResult.success) throw new Error(warehouseResult.error);
+
+        return {
+            success: true,
+            branch: branchResult,
+            warehouse: warehouseResult,
+        };
+    } catch (error) {
+        console.error("❌ خطأ في تحديث كلا المخزونين:", error);
+        return {
+            success: false,
+            error: error.message,
+        };
+    }
+}
+
+// ============================================================
+// تصدير الدوال للنطاق العام
+// ============================================================
+
+window.updateBranchStock = updateBranchStock;
+window.updateWarehouseStock = updateWarehouseStock;
+window.updateBothStocks = updateBothStocks;
+
+// ============================================================
+// سجل التوريدات - النسخة النهائية
 // ============================================================
 
 document.addEventListener("DOMContentLoaded", async function() {
-    const user = await checkAuthAndRedirect();
+    var user = await checkAuthAndRedirect();
     if (!user || user.profile.role !== "admin") {
         window.location.href = "/pages/login.html";
         return;
     }
 
-    const avatar = document.getElementById("userAvatar");
-    const userName = document.getElementById("userName");
+    var avatar = document.getElementById("userAvatar");
+    var userName = document.getElementById("userName");
     avatar.textContent = user.profile.full_name ?
         user.profile.full_name.charAt(0).toUpperCase() :
         "A";
@@ -27,18 +159,19 @@ document.addEventListener("DOMContentLoaded", async function() {
 
 async function loadBranches() {
     try {
-        const { data, error } = await supabaseClient
+        var { data, error } = await supabaseClient
             .from("branches")
             .select("*")
             .order("name");
 
         if (error) throw error;
 
-        const select = document.getElementById("filterBranch");
+        var select = document.getElementById("filterBranch");
         select.innerHTML = '<option value="">جميع الفروع</option>';
-        data.forEach((branch) => {
-            select.innerHTML += `<option value="${branch.id}">${branch.name}</option>`;
-        });
+        for (var i = 0; i < data.length; i++) {
+            select.innerHTML +=
+                '<option value="' + data[i].id + '">' + data[i].name + "</option>";
+        }
     } catch (error) {
         console.error("Error loading branches:", error);
     }
@@ -46,18 +179,19 @@ async function loadBranches() {
 
 async function loadProducts() {
     try {
-        const { data, error } = await supabaseClient
+        var { data, error } = await supabaseClient
             .from("products")
             .select("*")
             .order("name");
 
         if (error) throw error;
 
-        const select = document.getElementById("filterProduct");
+        var select = document.getElementById("filterProduct");
         select.innerHTML = '<option value="">جميع المنتجات</option>';
-        data.forEach((product) => {
-            select.innerHTML += `<option value="${product.id}">${product.name}</option>`;
-        });
+        for (var i = 0; i < data.length; i++) {
+            select.innerHTML +=
+                '<option value="' + data[i].id + '">' + data[i].name + "</option>";
+        }
     } catch (error) {
         console.error("Error loading products:", error);
     }
@@ -67,37 +201,72 @@ async function loadProducts() {
 // تحميل وعرض التوريدات
 // ============================================================
 
+// ============================================================
+// تحميل وعرض التوريدات (مُصلح)
+// ============================================================
+
 async function loadTransfers() {
     try {
-        const dateFrom = document.getElementById("filterDateFrom").value;
-        const dateTo = document.getElementById("filterDateTo").value;
-        const branchId = document.getElementById("filterBranch").value;
-        const productId = document.getElementById("filterProduct").value;
+        var dateFrom = document.getElementById("filterDateFrom").value;
+        var dateTo = document.getElementById("filterDateTo").value;
+        var branchId = document.getElementById("filterBranch").value;
+        var productId = document.getElementById("filterProduct").value;
 
-        let query = supabaseClient.from("branch_transfers").select(`
-                *,
-                from_branch:branches!from_branch_id(name),
-                to_branch:branches!to_branch_id(name),
-                products(name),
-                profiles(full_name)
-            `);
+        // ✅ استعلام بدون foreign keys معقدة
+        var { data: transfers, error: transfersError } = await supabaseClient
+            .from("branch_transfers")
+            .select("*")
+            .order("transfer_date", { ascending: false });
 
-        if (dateFrom) {
-            query = query.gte("transfer_date", dateFrom);
-        }
-        if (dateTo) {
-            query = query.lte("transfer_date", dateTo);
-        }
-        if (branchId) {
-            query = query.eq("to_branch_id", branchId);
-        }
-        if (productId) {
-            query = query.eq("product_id", productId);
-        }
+        if (transfersError) throw transfersError;
 
-        const { data, error } = await query;
+        // جلب بيانات الفروع والمنتجات بشكل منفصل
+        var { data: branches } = await supabaseClient
+            .from("branches")
+            .select("id, name");
+        var { data: products } = await supabaseClient
+            .from("products")
+            .select("id, name");
+        var { data: profiles } = await supabaseClient
+            .from("profiles")
+            .select("id, full_name");
 
-        if (error) throw error;
+        // ربط البيانات يدوياً
+        var data = transfers.map(function(transfer) {
+            var fromBranch = null;
+            var toBranch = null;
+            var product = null;
+            var profile = null;
+
+            for (var i = 0; i < branches.length; i++) {
+                if (branches[i].id === transfer.from_branch_id) {
+                    fromBranch = branches[i];
+                }
+                if (branches[i].id === transfer.to_branch_id) {
+                    toBranch = branches[i];
+                }
+            }
+
+            for (var j = 0; j < products.length; j++) {
+                if (products[j].id === transfer.product_id) {
+                    product = products[j];
+                }
+            }
+
+            for (var k = 0; k < profiles.length; k++) {
+                if (profiles[k].id === transfer.created_by) {
+                    profile = profiles[k];
+                }
+            }
+
+            return {
+                ...transfer,
+                from_branch: fromBranch,
+                to_branch: toBranch,
+                products: product,
+                profiles: profile,
+            };
+        });
 
         displayTransfers(data);
         updateStatistics(data);
@@ -108,7 +277,7 @@ async function loadTransfers() {
 }
 
 function displayTransfers(data) {
-    const tbody = document.getElementById("transfersBody");
+    var tbody = document.getElementById("transfersBody");
 
     if (data.length === 0) {
         tbody.innerHTML =
@@ -116,54 +285,73 @@ function displayTransfers(data) {
         return;
     }
 
-    tbody.innerHTML = data
-        .map((transfer, index) => {
-            const typeNames = {
-                supply: "توريد",
-                transfer: "تحويل",
-                return: "مرتجع للمخزن",
-                customer_return: "مرتجع عميل ✅",
-                exchange: "استبدال 🔄",
-            };
-            const typeColors = {
-                supply: "primary",
-                transfer: "success",
-                return: "warning",
-                customer_return: "info",
-                exchange: "secondary",
-            };
+    var html = "";
+    for (var i = 0; i < data.length; i++) {
+        var transfer = data[i];
 
-            const typeName =
-                typeNames[transfer.transfer_type] || transfer.transfer_type;
-            const typeColor = typeColors[transfer.transfer_type] || "secondary";
+        var typeNames = {
+            supply: "توريد",
+            transfer: "تحويل",
+            return: "مرتجع للمخزن",
+            customer_return: "مرتجع عميل ✅",
+            exchange: "استبدال 🔄",
+        };
+        var typeColors = {
+            supply: "primary",
+            transfer: "success",
+            return: "warning",
+            customer_return: "info",
+            exchange: "secondary",
+        };
 
-            const fromBranchName =
-                transfer.from_branch && transfer.from_branch.name ?
-                transfer.from_branch.name :
-                "المخزن";
-            const toBranchName =
-                transfer.to_branch && transfer.to_branch.name ?
-                transfer.to_branch.name :
-                "المخزن";
-            const productName =
-                transfer.products && transfer.products.name ?
-                transfer.products.name :
-                "غير معروف";
+        var typeName = typeNames[transfer.transfer_type] || transfer.transfer_type;
+        var typeColor = typeColors[transfer.transfer_type] || "secondary";
 
-            return `
-            <tr>
-                <td>${index + 1}</td>
-                <td>${new Date(transfer.transfer_date).toLocaleDateString("ar")}</td>
-                <td><span class="badge bg-${typeColor}">${typeName}</span></td>
-                <td>${fromBranchName}</td>
-                <td>${toBranchName}</td>
-                <td>${productName}</td>
-                <td><span class="badge bg-primary">${transfer.quantity}</span></td>
-                <td>${transfer.notes || "-"}</td>
-            </tr>
-        `;
-        })
-        .join("");
+        var fromBranchName = "المخزن";
+        var toBranchName = "المخزن";
+        var productName = "غير معروف";
+
+        if (transfer.from_branch && transfer.from_branch.name) {
+            fromBranchName = transfer.from_branch.name;
+        }
+        if (transfer.to_branch && transfer.to_branch.name) {
+            toBranchName = transfer.to_branch.name;
+        }
+        if (transfer.products && transfer.products.name) {
+            productName = transfer.products.name;
+        }
+
+        html +=
+            "<tr>" +
+            "<td>" +
+            (i + 1) +
+            "</td>" +
+            "<td>" +
+            new Date(transfer.transfer_date).toLocaleDateString("ar") +
+            "</td>" +
+            '<td><span class="badge bg-' +
+            typeColor +
+            '">' +
+            typeName +
+            "</span></td>" +
+            "<td>" +
+            fromBranchName +
+            "</td>" +
+            "<td>" +
+            toBranchName +
+            "</td>" +
+            "<td>" +
+            productName +
+            "</td>" +
+            '<td><span class="badge bg-primary">' +
+            transfer.quantity +
+            "</span></td>" +
+            "<td>" +
+            (transfer.notes || "-") +
+            "</td>" +
+            "</tr>";
+    }
+    tbody.innerHTML = html;
 }
 
 function updateStatistics(data) {
@@ -175,24 +363,32 @@ function updateStatistics(data) {
         return;
     }
 
-    const totalItems = data.reduce(function(sum, t) {
-        return sum + (t.quantity || 0);
-    }, 0);
-    const uniqueBranches = new Set(
-        data.map(function(t) {
-            return t.to_branch_id;
-        }),
-    ).size;
-    const uniqueDays = new Set(
-        data.map(function(t) {
-            return t.transfer_date;
-        }),
-    ).size;
+    var totalItems = 0;
+    for (var i = 0; i < data.length; i++) {
+        totalItems += data[i].quantity || 0;
+    }
+
+    var uniqueBranches = [];
+    var uniqueDays = [];
+    for (var j = 0; j < data.length; j++) {
+        if (
+            data[j].to_branch_id &&
+            uniqueBranches.indexOf(data[j].to_branch_id) === -1
+        ) {
+            uniqueBranches.push(data[j].to_branch_id);
+        }
+        if (
+            data[j].transfer_date &&
+            uniqueDays.indexOf(data[j].transfer_date) === -1
+        ) {
+            uniqueDays.push(data[j].transfer_date);
+        }
+    }
 
     document.getElementById("totalTransfers").textContent = data.length;
     document.getElementById("totalItems").textContent = totalItems;
-    document.getElementById("totalBranches").textContent = uniqueBranches;
-    document.getElementById("totalDays").textContent = uniqueDays;
+    document.getElementById("totalBranches").textContent = uniqueBranches.length;
+    document.getElementById("totalDays").textContent = uniqueDays.length;
 }
 
 function resetFilters() {
@@ -204,9 +400,6 @@ function resetFilters() {
 }
 
 function exportTransfers() {
-    const table = document.getElementById("transfersTable");
-    var csv = [];
-
     var headers = [
         "التاريخ",
         "النوع",
@@ -216,19 +409,20 @@ function exportTransfers() {
         "الكمية",
         "الملاحظات",
     ];
-    csv.push(headers.join(","));
-
     var rows = document.querySelectorAll("#transfersBody tr");
-    rows.forEach(function(row) {
+    var csv = [headers.join(",")];
+
+    for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
         var cols = row.querySelectorAll("td");
         if (cols.length > 1) {
             var rowData = [];
-            for (var i = 1; i < cols.length; i++) {
-                rowData.push(cols[i].textContent.trim());
+            for (var j = 1; j < cols.length; j++) {
+                rowData.push(cols[j].textContent.trim());
             }
             csv.push(rowData.join(","));
         }
-    });
+    }
 
     var blob = new Blob(["\uFEFF" + csv.join("\n")], {
         type: "text/csv;charset=utf-8;",
@@ -241,7 +435,7 @@ function exportTransfers() {
 }
 
 // ============================================================
-// دوال التحويلات والمرتجعات
+// showTransferModal
 // ============================================================
 
 var supplyModal = null;
@@ -257,80 +451,73 @@ function showSupplyModal() {
 // ============================================================
 
 function showTransferModal() {
-    var modalHtml = `
-        <div class="modal fade" id="transferModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-exchange-alt me-2"></i>تحويل بين الفروع</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div id="transferMessage" class="alert d-none"></div>
-                        <form id="transferForm">
-                            <div class="mb-3">
-                                <label class="form-label">من فرع *</label>
-                                <select class="form-select" id="transferFromBranch" required>
-                                    <option value="">اختر الفرع المصدر</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">إلى فرع *</label>
-                                <select class="form-select" id="transferToBranch" required>
-                                    <option value="">اختر الفرع الوجهة</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">المنتج *</label>
-                                <select class="form-select" id="transferProduct" required>
-                                    <option value="">اختر المنتج</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">الكمية المتاحة</label>
-                                <input type="text" class="form-control" id="transferAvailableStock" readonly>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">الكمية *</label>
-                                <input type="number" class="form-control" id="transferQuantity" min="1" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">الملاحظات</label>
-                                <textarea class="form-control" id="transferNotes" rows="2" placeholder="سبب التحويل..."></textarea>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                        <button type="button" class="btn btn-success" onclick="executeTransfer()">
-                            <i class="fas fa-exchange-alt me-2"></i>تنفيذ التحويل
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
     var oldModal = document.getElementById("transferModal");
     if (oldModal) oldModal.remove();
+
+    var modalHtml =
+        "" +
+        '<div class="modal fade" id="transferModal" tabindex="-1">' +
+        '  <div class="modal-dialog">' +
+        '    <div class="modal-content">' +
+        '      <div class="modal-header">' +
+        '        <h5 class="modal-title"><i class="fas fa-exchange-alt me-2"></i>تحويل بين الفروع</h5>' +
+        '        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>' +
+        "      </div>" +
+        '      <div class="modal-body">' +
+        '        <div id="transferMessage" class="alert d-none"></div>' +
+        '        <form id="transferForm">' +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">من فرع *</label>' +
+        '            <select class="form-select" id="transferFromBranch" required>' +
+        '              <option value="">اختر الفرع المصدر</option>' +
+        "            </select>" +
+        "          </div>" +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">إلى فرع *</label>' +
+        '            <select class="form-select" id="transferToBranch" required>' +
+        '              <option value="">اختر الفرع الوجهة</option>' +
+        "            </select>" +
+        "          </div>" +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">المنتج *</label>' +
+        '            <select class="form-select" id="transferProduct" required>' +
+        '              <option value="">اختر المنتج</option>' +
+        "            </select>" +
+        "          </div>" +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">الكمية المتاحة</label>' +
+        '            <input type="text" class="form-control" id="transferAvailableStock" readonly>' +
+        "          </div>" +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">الكمية *</label>' +
+        '            <input type="number" class="form-control" id="transferQuantity" min="1" required>' +
+        "          </div>" +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">الملاحظات</label>' +
+        '            <textarea class="form-control" id="transferNotes" rows="2" placeholder="سبب التحويل..."></textarea>' +
+        "          </div>" +
+        "        </form>" +
+        "      </div>" +
+        '      <div class="modal-footer">' +
+        '        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>' +
+        '        <button type="button" class="btn btn-success" onclick="executeTransfer()">تنفيذ التحويل</button>' +
+        "      </div>" +
+        "    </div>" +
+        "  </div>" +
+        "</div>";
 
     document.body.insertAdjacentHTML("beforeend", modalHtml);
 
     transferModal = new bootstrap.Modal(document.getElementById("transferModal"));
-
     loadBranchesForTransfer();
     loadProductsForTransfer();
 
     document
         .getElementById("transferProduct")
-        .addEventListener("change", function() {
-            updateAvailableStockForTransfer();
-        });
+        .addEventListener("change", updateAvailableStockForTransfer);
     document
         .getElementById("transferFromBranch")
-        .addEventListener("change", function() {
-            updateAvailableStockForTransfer();
-        });
+        .addEventListener("change", updateAvailableStockForTransfer);
 
     transferModal.show();
 }
@@ -341,20 +528,19 @@ async function loadBranchesForTransfer() {
             .from("branches")
             .select("*")
             .order("name");
-
         if (error) throw error;
 
         var selects = ["transferFromBranch", "transferToBranch"];
-        selects.forEach(function(id) {
-            var select = document.getElementById(id);
+        for (var i = 0; i < selects.length; i++) {
+            var select = document.getElementById(selects[i]);
             if (select) {
                 select.innerHTML = '<option value="">اختر الفرع</option>';
-                data.forEach(function(branch) {
+                for (var j = 0; j < data.length; j++) {
                     select.innerHTML +=
-                        '<option value="' + branch.id + '">' + branch.name + "</option>";
-                });
+                        '<option value="' + data[j].id + '">' + data[j].name + "</option>";
+                }
             }
-        });
+        }
     } catch (error) {
         console.error("Error loading branches:", error);
     }
@@ -366,16 +552,15 @@ async function loadProductsForTransfer() {
             .from("products")
             .select("*")
             .order("name");
-
         if (error) throw error;
 
         var select = document.getElementById("transferProduct");
         if (select) {
             select.innerHTML = '<option value="">اختر المنتج</option>';
-            data.forEach(function(product) {
+            for (var i = 0; i < data.length; i++) {
                 select.innerHTML +=
-                    '<option value="' + product.id + '">' + product.name + "</option>";
-            });
+                    '<option value="' + data[i].id + '">' + data[i].name + "</option>";
+            }
         }
     } catch (error) {
         console.error("Error loading products:", error);
@@ -401,7 +586,6 @@ async function updateAvailableStockForTransfer() {
             .single();
 
         if (error && error.code !== "PGRST116") throw error;
-
         stockElement.value = ((data && data.quantity) || 0) + " قطعة";
     } catch (error) {
         console.error("Error loading stock:", error);
@@ -428,15 +612,15 @@ async function executeTransfer() {
     }
 
     try {
-        // ====== 1. نقص من الفرع المصدر ======
-        const fromResult = await updateBranchStock(fromBranchId, productId, -quantity);
+        var fromResult = await updateBranchStock(
+            fromBranchId,
+            productId, -quantity,
+        );
         if (!fromResult.success) throw new Error(fromResult.error);
 
-        // ====== 2. زيادة في الفرع الوجهة ======
-        const toResult = await updateBranchStock(toBranchId, productId, quantity);
+        var toResult = await updateBranchStock(toBranchId, productId, quantity);
         if (!toResult.success) throw new Error(toResult.error);
 
-        // ====== 3. تسجيل في branch_transfers ======
         var { data: userData } = await supabaseClient.auth.getUser();
         var userId = null;
         if (userData && userData.user && userData.user.id) {
@@ -451,16 +635,17 @@ async function executeTransfer() {
             transfer_type: "transfer",
             notes: notes || "تحويل بين الفروع",
             created_by: userId,
-            transfer_date: new Date().toISOString()
+            transfer_date: new Date().toISOString(),
         });
 
-        showMessage(msg,
-            `✅ تم التحويل بنجاح\n` +
-            `📦 من: ${fromResult.newQuantity}\n` +
-            `📦 إلى: ${toResult.newQuantity}`,
-            "success"
+        showMessage(
+            msg,
+            "✅ تم التحويل بنجاح\n📦 من: " +
+            fromResult.newQuantity +
+            "\n📦 إلى: " +
+            toResult.newQuantity,
+            "success",
         );
-
         setTimeout(function() {
             transferModal.hide();
             loadTransfers();
@@ -476,74 +661,67 @@ async function executeTransfer() {
 // ============================================================
 
 function showReturnModal() {
-    var modalHtml = `
-        <div class="modal fade" id="returnModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-undo me-2"></i>مرتجع للمخزن</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div id="returnMessage" class="alert d-none"></div>
-                        <form id="returnForm">
-                            <div class="mb-3">
-                                <label class="form-label">من فرع *</label>
-                                <select class="form-select" id="returnBranch" required>
-                                    <option value="">اختر الفرع</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">المنتج *</label>
-                                <select class="form-select" id="returnProduct" required>
-                                    <option value="">اختر المنتج</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">الكمية المتاحة</label>
-                                <input type="text" class="form-control" id="returnAvailableStock" readonly>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">الكمية *</label>
-                                <input type="number" class="form-control" id="returnQuantity" min="1" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">سبب المرتجع</label>
-                                <textarea class="form-control" id="returnNotes" rows="2" placeholder="سبب الإرجاع..."></textarea>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                        <button type="button" class="btn btn-warning" onclick="executeReturn()">
-                            <i class="fas fa-undo me-2"></i>تنفيذ المرتجع
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
     var oldModal = document.getElementById("returnModal");
     if (oldModal) oldModal.remove();
+
+    var modalHtml =
+        "" +
+        '<div class="modal fade" id="returnModal" tabindex="-1">' +
+        '  <div class="modal-dialog">' +
+        '    <div class="modal-content">' +
+        '      <div class="modal-header">' +
+        '        <h5 class="modal-title"><i class="fas fa-undo me-2"></i>مرتجع للمخزن</h5>' +
+        '        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>' +
+        "      </div>" +
+        '      <div class="modal-body">' +
+        '        <div id="returnMessage" class="alert d-none"></div>' +
+        '        <form id="returnForm">' +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">من فرع *</label>' +
+        '            <select class="form-select" id="returnBranch" required>' +
+        '              <option value="">اختر الفرع</option>' +
+        "            </select>" +
+        "          </div>" +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">المنتج *</label>' +
+        '            <select class="form-select" id="returnProduct" required>' +
+        '              <option value="">اختر المنتج</option>' +
+        "            </select>" +
+        "          </div>" +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">الكمية المتاحة</label>' +
+        '            <input type="text" class="form-control" id="returnAvailableStock" readonly>' +
+        "          </div>" +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">الكمية *</label>' +
+        '            <input type="number" class="form-control" id="returnQuantity" min="1" required>' +
+        "          </div>" +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">سبب المرتجع</label>' +
+        '            <textarea class="form-control" id="returnNotes" rows="2" placeholder="سبب الإرجاع..."></textarea>' +
+        "          </div>" +
+        "        </form>" +
+        "      </div>" +
+        '      <div class="modal-footer">' +
+        '        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>' +
+        '        <button type="button" class="btn btn-warning" onclick="executeReturn()">تنفيذ المرتجع</button>' +
+        "      </div>" +
+        "    </div>" +
+        "  </div>" +
+        "</div>";
 
     document.body.insertAdjacentHTML("beforeend", modalHtml);
 
     returnModal = new bootstrap.Modal(document.getElementById("returnModal"));
-
     loadBranchesForReturn();
     loadProductsForReturn();
 
     document
         .getElementById("returnProduct")
-        .addEventListener("change", function() {
-            updateAvailableStockForReturn();
-        });
+        .addEventListener("change", updateAvailableStockForReturn);
     document
         .getElementById("returnBranch")
-        .addEventListener("change", function() {
-            updateAvailableStockForReturn();
-        });
+        .addEventListener("change", updateAvailableStockForReturn);
 
     returnModal.show();
 }
@@ -554,16 +732,15 @@ async function loadBranchesForReturn() {
             .from("branches")
             .select("*")
             .order("name");
-
         if (error) throw error;
 
         var select = document.getElementById("returnBranch");
         if (select) {
             select.innerHTML = '<option value="">اختر الفرع</option>';
-            data.forEach(function(branch) {
+            for (var i = 0; i < data.length; i++) {
                 select.innerHTML +=
-                    '<option value="' + branch.id + '">' + branch.name + "</option>";
-            });
+                    '<option value="' + data[i].id + '">' + data[i].name + "</option>";
+            }
         }
     } catch (error) {
         console.error("Error loading branches:", error);
@@ -576,16 +753,15 @@ async function loadProductsForReturn() {
             .from("products")
             .select("*")
             .order("name");
-
         if (error) throw error;
 
         var select = document.getElementById("returnProduct");
         if (select) {
             select.innerHTML = '<option value="">اختر المنتج</option>';
-            data.forEach(function(product) {
+            for (var i = 0; i < data.length; i++) {
                 select.innerHTML +=
-                    '<option value="' + product.id + '">' + product.name + "</option>";
-            });
+                    '<option value="' + data[i].id + '">' + data[i].name + "</option>";
+            }
         }
     } catch (error) {
         console.error("Error loading products:", error);
@@ -611,17 +787,12 @@ async function updateAvailableStockForReturn() {
             .single();
 
         if (error && error.code !== "PGRST116") throw error;
-
         stockElement.value = ((data && data.quantity) || 0) + " قطعة";
     } catch (error) {
         console.error("Error loading stock:", error);
         stockElement.value = "خطأ في التحميل";
     }
 }
-
-// ============================================================
-// مرتجع للمخزن (✅ مُصلح - مع تحديث warehouse_stock)
-// ============================================================
 
 async function executeReturn() {
     var branchId = document.getElementById("returnBranch").value;
@@ -636,32 +807,24 @@ async function executeReturn() {
     }
 
     try {
-        // ====== 1. نقص من الفرع ======
-        const branchResult = await updateBranchStock(branchId, productId, -quantity);
-        if (!branchResult.success) throw new Error(branchResult.error);
+        var result = await updateBothStocks(
+            branchId,
+            productId, -quantity,
+            quantity,
+        );
+        if (!result.success) throw new Error(result.error);
 
-        // ====== 2. زيادة المخزن الرئيسي ======
-        const warehouseResult = await updateWarehouseStock(productId, quantity);
-        if (!warehouseResult.success) throw new Error(warehouseResult.error);
+        await supabaseClient.from("returns_and_exchanges").insert({
+            branch_id: branchId,
+            product_id: productId,
+            quantity: quantity,
+            type: "return",
+            reason: notes || "مرتجع للمخزن",
+            transferred_to_warehouse: true,
+            warehouse_updated: true,
+            branch_updated: true,
+        });
 
-        // ====== 3. تسجيل في returns_and_exchanges ======
-        const { error: reError } = await supabaseClient
-            .from("returns_and_exchanges")
-            .insert({
-                branch_id: branchId,
-                product_id: productId,
-                quantity: quantity,
-                type: 'return',
-                reason: notes || 'مرتجع للمخزن',
-                status: 'completed',
-                created_at: new Date().toISOString(),
-                transferred_to_warehouse: true,
-                warehouse_updated: true
-            });
-
-        if (reError) throw reError;
-
-        // ====== 4. تسجيل في branch_transfers ======
         var { data: userData } = await supabaseClient.auth.getUser();
         var userId = null;
         if (userData && userData.user && userData.user.id) {
@@ -674,25 +837,23 @@ async function executeReturn() {
             product_id: productId,
             quantity: quantity,
             transfer_type: "return",
-            notes: notes || "مرتجع للمخزن (تم تحديث المخزن)",
+            notes: notes || "مرتجع للمخزن (تم الربط)",
             created_by: userId,
-            transfer_date: new Date().toISOString()
+            transfer_date: new Date().toISOString(),
         });
 
-        showMessage(msg,
-            `✅ تم المرتجع بنجاح\n` +
-            `📦 الفرع: ${branchResult.newQuantity}\n` +
-            `🏚️ المخزن: ${warehouseResult.newQuantity}`,
-            "success"
+        showMessage(
+            msg,
+            "✅ تم المرتجع بنجاح (ربط تلقائي)\n📦 الفرع: " +
+            result.branch.newQuantity +
+            "\n🏚️ المخزن: " +
+            result.warehouse.newQuantity,
+            "success",
         );
-
         setTimeout(function() {
-            if (typeof returnModal !== 'undefined' && returnModal) {
-                returnModal.hide();
-            }
+            returnModal.hide();
             loadTransfers();
         }, 1500);
-
     } catch (error) {
         console.error("❌ Error in return:", error);
         showMessage(msg, "❌ فشل المرتجع: " + error.message, "danger");
@@ -711,7 +872,6 @@ function showSupplyModal() {
     }
 
     supplyModal = new bootstrap.Modal(modal);
-
     loadBranchesForSupply();
     loadProductsForSupply();
 
@@ -721,10 +881,7 @@ function showSupplyModal() {
 
     document
         .getElementById("supplyProduct")
-        .addEventListener("change", function() {
-            updateAvailableStockForSupply();
-        });
-
+        .addEventListener("change", updateAvailableStockForSupply);
     supplyModal.show();
 }
 
@@ -734,16 +891,15 @@ async function loadBranchesForSupply() {
             .from("branches")
             .select("*")
             .order("name");
-
         if (error) throw error;
 
         var select = document.getElementById("supplyBranch");
         if (select) {
             select.innerHTML = '<option value="">اختر الفرع</option>';
-            data.forEach(function(branch) {
+            for (var i = 0; i < data.length; i++) {
                 select.innerHTML +=
-                    '<option value="' + branch.id + '">' + branch.name + "</option>";
-            });
+                    '<option value="' + data[i].id + '">' + data[i].name + "</option>";
+            }
         }
     } catch (error) {
         console.error("Error loading branches:", error);
@@ -756,16 +912,15 @@ async function loadProductsForSupply() {
             .from("products")
             .select("*")
             .order("name");
-
         if (error) throw error;
 
         var select = document.getElementById("supplyProduct");
         if (select) {
             select.innerHTML = '<option value="">اختر المنتج</option>';
-            data.forEach(function(product) {
+            for (var i = 0; i < data.length; i++) {
                 select.innerHTML +=
-                    '<option value="' + product.id + '">' + product.name + "</option>";
-            });
+                    '<option value="' + data[i].id + '">' + data[i].name + "</option>";
+            }
         }
     } catch (error) {
         console.error("Error loading products:", error);
@@ -789,7 +944,6 @@ async function updateAvailableStockForSupply() {
             .single();
 
         if (error && error.code !== "PGRST116") throw error;
-
         stockElement.value = ((data && data.quantity) || 0) + " قطعة";
     } catch (error) {
         console.error("Error loading stock:", error);
@@ -810,15 +964,13 @@ async function executeSupply() {
     }
 
     try {
-        // ====== 1. نقص من المخزن الرئيسي ======
-        const warehouseResult = await updateWarehouseStock(productId, -quantity);
-        if (!warehouseResult.success) throw new Error(warehouseResult.error);
+        var result = await updateBothStocks(
+            branchId,
+            productId,
+            quantity, -quantity,
+        );
+        if (!result.success) throw new Error(result.error);
 
-        // ====== 2. زيادة في الفرع ======
-        const branchResult = await updateBranchStock(branchId, productId, quantity);
-        if (!branchResult.success) throw new Error(branchResult.error);
-
-        // ====== 3. تسجيل في branch_transfers ======
         var { data: userData } = await supabaseClient.auth.getUser();
         var userId = null;
         if (userData && userData.user && userData.user.id) {
@@ -831,26 +983,19 @@ async function executeSupply() {
             product_id: productId,
             quantity: quantity,
             transfer_type: "supply",
-            notes: notes || "توريد من المخزن الرئيسي",
+            notes: notes || "توريد من المخزن الرئيسي (تم الربط)",
             created_by: userId,
-            transfer_date: new Date().toISOString()
+            transfer_date: new Date().toISOString(),
         });
 
-        if (typeof logActivity === "function") {
-            await logActivity("supply_transfer", {
-                to_branch: branchId,
-                product: productId,
-                quantity: quantity,
-            });
-        }
-
-        showMessage(msg,
-            `✅ تم التوريد بنجاح\n` +
-            `🏚️ المخزن: ${warehouseResult.newQuantity}\n` +
-            `📦 الفرع: ${branchResult.newQuantity}`,
-            "success"
+        showMessage(
+            msg,
+            "✅ تم التوريد بنجاح (ربط تلقائي)\n🏚️ المخزن: " +
+            result.warehouse.newQuantity +
+            "\n📦 الفرع: " +
+            result.branch.newQuantity,
+            "success",
         );
-
         setTimeout(function() {
             supplyModal.hide();
             loadTransfers();
@@ -866,62 +1011,58 @@ async function executeSupply() {
 // ============================================================
 
 function showCustomerReturnModal() {
-    var modalHtml = `
-        <div class="modal fade" id="customerReturnModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-user-undo me-2"></i>مرتجع من العميل</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div id="customerReturnMessage" class="alert d-none"></div>
-                        <form id="customerReturnForm">
-                            <div class="mb-3">
-                                <label class="form-label">الفرع *</label>
-                                <select class="form-select" id="customerReturnBranch" required>
-                                    <option value="">اختر الفرع</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">المنتج *</label>
-                                <select class="form-select" id="customerReturnProduct" required>
-                                    <option value="">اختر المنتج</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">الكمية *</label>
-                                <input type="number" class="form-control" id="customerReturnQuantity" min="1" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">سبب المرتجع</label>
-                                <textarea class="form-control" id="customerReturnNotes" rows="2" placeholder="سبب الإرجاع..."></textarea>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                        <button type="button" class="btn btn-info" onclick="executeCustomerReturn()">
-                            <i class="fas fa-user-undo me-2"></i>تنفيذ المرتجع
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
     var oldModal = document.getElementById("customerReturnModal");
     if (oldModal) oldModal.remove();
+
+    var modalHtml =
+        "" +
+        '<div class="modal fade" id="customerReturnModal" tabindex="-1">' +
+        '  <div class="modal-dialog">' +
+        '    <div class="modal-content">' +
+        '      <div class="modal-header">' +
+        '        <h5 class="modal-title"><i class="fas fa-user-undo me-2"></i>مرتجع من العميل</h5>' +
+        '        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>' +
+        "      </div>" +
+        '      <div class="modal-body">' +
+        '        <div id="customerReturnMessage" class="alert d-none"></div>' +
+        '        <form id="customerReturnForm">' +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">الفرع *</label>' +
+        '            <select class="form-select" id="customerReturnBranch" required>' +
+        '              <option value="">اختر الفرع</option>' +
+        "            </select>" +
+        "          </div>" +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">المنتج *</label>' +
+        '            <select class="form-select" id="customerReturnProduct" required>' +
+        '              <option value="">اختر المنتج</option>' +
+        "            </select>" +
+        "          </div>" +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">الكمية *</label>' +
+        '            <input type="number" class="form-control" id="customerReturnQuantity" min="1" required>' +
+        "          </div>" +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">سبب المرتجع</label>' +
+        '            <textarea class="form-control" id="customerReturnNotes" rows="2" placeholder="سبب الإرجاع..."></textarea>' +
+        "          </div>" +
+        "        </form>" +
+        "      </div>" +
+        '      <div class="modal-footer">' +
+        '        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>' +
+        '        <button type="button" class="btn btn-info" onclick="executeCustomerReturn()">تنفيذ المرتجع</button>' +
+        "      </div>" +
+        "    </div>" +
+        "  </div>" +
+        "</div>";
 
     document.body.insertAdjacentHTML("beforeend", modalHtml);
 
     var modal = new bootstrap.Modal(
         document.getElementById("customerReturnModal"),
     );
-
     loadBranchesForCustomerReturn();
     loadProductsForCustomerReturn();
-
     modal.show();
 }
 
@@ -935,10 +1076,10 @@ async function loadBranchesForCustomerReturn() {
 
         var select = document.getElementById("customerReturnBranch");
         select.innerHTML = '<option value="">اختر الفرع</option>';
-        data.forEach(function(branch) {
+        for (var i = 0; i < data.length; i++) {
             select.innerHTML +=
-                '<option value="' + branch.id + '">' + branch.name + "</option>";
-        });
+                '<option value="' + data[i].id + '">' + data[i].name + "</option>";
+        }
     } catch (error) {
         console.error("Error loading branches:", error);
     }
@@ -954,23 +1095,25 @@ async function loadProductsForCustomerReturn() {
 
         var select = document.getElementById("customerReturnProduct");
         select.innerHTML = '<option value="">اختر المنتج</option>';
-        data.forEach(function(product) {
+        for (var i = 0; i < data.length; i++) {
             select.innerHTML +=
-                '<option value="' + product.id + '">' + product.name + "</option>";
-        });
+                '<option value="' + data[i].id + '">' + data[i].name + "</option>";
+        }
     } catch (error) {
         console.error("Error loading products:", error);
     }
 }
 
 // ============================================================
-// مرتجع من العميل (✅ مُصلح - مع تحديث warehouse_stock)
+// مرتجع من العميل (✅ الفرع فقط)
 // ============================================================
 
 async function executeCustomerReturn() {
     var branchId = document.getElementById("customerReturnBranch").value;
     var productId = document.getElementById("customerReturnProduct").value;
-    var quantity = parseInt(document.getElementById("customerReturnQuantity").value);
+    var quantity = parseInt(
+        document.getElementById("customerReturnQuantity").value,
+    );
     var notes = document.getElementById("customerReturnNotes").value;
     var msg = document.getElementById("customerReturnMessage");
 
@@ -980,32 +1123,23 @@ async function executeCustomerReturn() {
     }
 
     try {
-        // ====== 1. زيادة مخزون الفرع ======
-        const branchResult = await updateBranchStock(branchId, productId, quantity);
+        // ✅ فقط الفرع يزيد (المخزن ميتغيرش)
+        var branchResult = await updateBranchStock(branchId, productId, quantity);
         if (!branchResult.success) throw new Error(branchResult.error);
 
-        // ====== 2. زيادة المخزن الرئيسي ======
-        const warehouseResult = await updateWarehouseStock(productId, quantity);
-        if (!warehouseResult.success) throw new Error(warehouseResult.error);
+        // تسجيل في returns_and_exchanges
+        await supabaseClient.from("returns_and_exchanges").insert({
+            branch_id: branchId,
+            product_id: productId,
+            quantity: quantity,
+            type: "return",
+            reason: notes || "مرتجع من العميل",
+            transferred_to_warehouse: false, // ❌ مترحلش للمخزن
+            warehouse_updated: false, // ❌ المخزن ميتحدثش
+            branch_updated: true,
+        });
 
-        // ====== 3. تسجيل في returns_and_exchanges ======
-        const { error: reError } = await supabaseClient
-            .from("returns_and_exchanges")
-            .insert({
-                branch_id: branchId,
-                product_id: productId,
-                quantity: quantity,
-                type: 'return',
-                reason: notes || 'مرتجع من العميل',
-                status: 'completed',
-                created_at: new Date().toISOString(),
-                transferred_to_warehouse: true,
-                warehouse_updated: true
-            });
-
-        if (reError) throw reError;
-
-        // ====== 4. تسجيل في branch_transfers ======
+        // تسجيل في branch_transfers
         var { data: userData } = await supabaseClient.auth.getUser();
         var userId = null;
         if (userData && userData.user && userData.user.id) {
@@ -1018,16 +1152,19 @@ async function executeCustomerReturn() {
             product_id: productId,
             quantity: quantity,
             transfer_type: "customer_return",
-            notes: notes || "مرتجع من العميل (تم تحديث المخزن)",
+            notes: notes || "مرتجع من العميل (الفرع فقط)",
             created_by: userId,
-            transfer_date: new Date().toISOString()
+            transfer_date: new Date().toISOString(),
         });
 
-        showMessage(msg,
-            `✅ تم إرجاع ${quantity} قطعة بنجاح\n` +
-            `📦 الفرع: ${branchResult.newQuantity}\n` +
-            `🏚️ المخزن: ${warehouseResult.newQuantity}`,
-            "success"
+        showMessage(
+            msg,
+            "✅ تم إرجاع " +
+            quantity +
+            " قطعة بنجاح\n" +
+            "📦 الفرع: " +
+            branchResult.newQuantity,
+            "success",
         );
 
         setTimeout(function() {
@@ -1038,9 +1175,8 @@ async function executeCustomerReturn() {
             }
             loadTransfers();
         }, 1500);
-
     } catch (error) {
-        console.error("❌ Error in customer return:", error);
+        console.error("❌ Error:", error);
         showMessage(msg, "❌ فشل المرتجع: " + error.message, "danger");
     }
 }
@@ -1050,66 +1186,62 @@ async function executeCustomerReturn() {
 // ============================================================
 
 function showExchangeModal() {
-    var modalHtml = `
-        <div class="modal fade" id="exchangeModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-exchange-alt me-2"></i>استبدال منتج</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div id="exchangeMessage" class="alert d-none"></div>
-                        <form id="exchangeForm">
-                            <div class="mb-3">
-                                <label class="form-label">الفرع *</label>
-                                <select class="form-select" id="exchangeBranch" required>
-                                    <option value="">اختر الفرع</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">المنتج المرتجع *</label>
-                                <select class="form-select" id="exchangeOldProduct" required>
-                                    <option value="">اختر المنتج</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">المنتج الجديد *</label>
-                                <select class="form-select" id="exchangeNewProduct" required>
-                                    <option value="">اختر المنتج</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">الكمية *</label>
-                                <input type="number" class="form-control" id="exchangeQuantity" min="1" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">الملاحظات</label>
-                                <textarea class="form-control" id="exchangeNotes" rows="2" placeholder="ملاحظات..."></textarea>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                        <button type="button" class="btn btn-secondary" onclick="executeExchange()">
-                            <i class="fas fa-exchange-alt me-2"></i>تنفيذ الاستبدال
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
     var oldModal = document.getElementById("exchangeModal");
     if (oldModal) oldModal.remove();
+
+    var modalHtml =
+        "" +
+        '<div class="modal fade" id="exchangeModal" tabindex="-1">' +
+        '  <div class="modal-dialog">' +
+        '    <div class="modal-content">' +
+        '      <div class="modal-header">' +
+        '        <h5 class="modal-title"><i class="fas fa-exchange-alt me-2"></i>استبدال منتج</h5>' +
+        '        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>' +
+        "      </div>" +
+        '      <div class="modal-body">' +
+        '        <div id="exchangeMessage" class="alert d-none"></div>' +
+        '        <form id="exchangeForm">' +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">الفرع *</label>' +
+        '            <select class="form-select" id="exchangeBranch" required>' +
+        '              <option value="">اختر الفرع</option>' +
+        "            </select>" +
+        "          </div>" +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">المنتج المرتجع *</label>' +
+        '            <select class="form-select" id="exchangeOldProduct" required>' +
+        '              <option value="">اختر المنتج</option>' +
+        "            </select>" +
+        "          </div>" +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">المنتج الجديد *</label>' +
+        '            <select class="form-select" id="exchangeNewProduct" required>' +
+        '              <option value="">اختر المنتج</option>' +
+        "            </select>" +
+        "          </div>" +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">الكمية *</label>' +
+        '            <input type="number" class="form-control" id="exchangeQuantity" min="1" required>' +
+        "          </div>" +
+        '          <div class="mb-3">' +
+        '            <label class="form-label">الملاحظات</label>' +
+        '            <textarea class="form-control" id="exchangeNotes" rows="2" placeholder="ملاحظات..."></textarea>' +
+        "          </div>" +
+        "        </form>" +
+        "      </div>" +
+        '      <div class="modal-footer">' +
+        '        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>' +
+        '        <button type="button" class="btn btn-secondary" onclick="executeExchange()">تنفيذ الاستبدال</button>' +
+        "      </div>" +
+        "    </div>" +
+        "  </div>" +
+        "</div>";
 
     document.body.insertAdjacentHTML("beforeend", modalHtml);
 
     var modal = new bootstrap.Modal(document.getElementById("exchangeModal"));
-
     loadBranchesForExchange();
     loadProductsForExchange();
-
     modal.show();
 }
 
@@ -1123,10 +1255,10 @@ async function loadBranchesForExchange() {
 
         var select = document.getElementById("exchangeBranch");
         select.innerHTML = '<option value="">اختر الفرع</option>';
-        data.forEach(function(branch) {
+        for (var i = 0; i < data.length; i++) {
             select.innerHTML +=
-                '<option value="' + branch.id + '">' + branch.name + "</option>";
-        });
+                '<option value="' + data[i].id + '">' + data[i].name + "</option>";
+        }
     } catch (error) {
         console.error("Error loading branches:", error);
     }
@@ -1140,22 +1272,22 @@ async function loadProductsForExchange() {
             .order("name");
         if (error) throw error;
 
-        var selects = ["exchangeOldProduct", "exchangeNewProduct"];
-        selects.forEach(function(id) {
-            var select = document.getElementById(id);
+        var ids = ["exchangeOldProduct", "exchangeNewProduct"];
+        for (var j = 0; j < ids.length; j++) {
+            var select = document.getElementById(ids[j]);
             select.innerHTML = '<option value="">اختر المنتج</option>';
-            data.forEach(function(product) {
+            for (var i = 0; i < data.length; i++) {
                 select.innerHTML +=
-                    '<option value="' + product.id + '">' + product.name + "</option>";
-            });
-        });
+                    '<option value="' + data[i].id + '">' + data[i].name + "</option>";
+            }
+        }
     } catch (error) {
         console.error("Error loading products:", error);
     }
 }
 
 // ============================================================
-// استبدال منتج (✅ مُصلح - مع تحديث warehouse_stock)
+// استبدال منتج (✅ الفرع فقط)
 // ============================================================
 
 async function executeExchange() {
@@ -1177,77 +1309,72 @@ async function executeExchange() {
     }
 
     try {
-        // ====== 1. زيادة المنتج القديم في الفرع ======
-        const oldBranchResult = await updateBranchStock(branchId, oldProductId, quantity);
+        // ✅ القديم: الفرع يزيد (المخزن ميتغيرش)
+        var oldBranchResult = await updateBranchStock(
+            branchId,
+            oldProductId,
+            quantity,
+        );
         if (!oldBranchResult.success) throw new Error(oldBranchResult.error);
 
-        // ====== 2. نقص المنتج الجديد من الفرع ======
-        const newBranchResult = await updateBranchStock(branchId, newProductId, -quantity);
+        // ✅ الجديد: الفرع ينقص (المخزن ميتغيرش)
+        var newBranchResult = await updateBranchStock(
+            branchId,
+            newProductId, -quantity,
+        );
         if (!newBranchResult.success) throw new Error(newBranchResult.error);
 
-        // ====== 3. تحديث المخزن الرئيسي ======
-        // 3أ: المخزن يستقبل المنتج القديم (يزيد)
-        const warehouseOldResult = await updateWarehouseStock(oldProductId, quantity);
-        if (!warehouseOldResult.success) throw new Error(warehouseOldResult.error);
-
-        // 3ب: المخزن ينقص المنتج الجديد (ينقص)
-        const warehouseNewResult = await updateWarehouseStock(newProductId, -quantity);
-        if (!warehouseNewResult.success) throw new Error(warehouseNewResult.error);
-
-        // ====== 4. تسجيل في returns_and_exchanges ======
+        // تسجيل في returns_and_exchanges
         var { data: userData } = await supabaseClient.auth.getUser();
         var userId = null;
         if (userData && userData.user && userData.user.id) {
             userId = userData.user.id;
         }
 
-        const { error: reError } = await supabaseClient
-            .from("returns_and_exchanges")
-            .insert({
-                branch_id: branchId,
-                product_id: oldProductId,
-                exchange_product_id: newProductId,
-                quantity: quantity,
-                type: 'exchange',
-                reason: notes || 'استبدال منتج',
-                status: 'completed',
-                created_at: new Date().toISOString(),
-                transferred_to_warehouse: true,
-                warehouse_updated: true
-            });
+        await supabaseClient.from("returns_and_exchanges").insert({
+            branch_id: branchId,
+            product_id: oldProductId,
+            exchange_product_id: newProductId,
+            quantity: quantity,
+            type: "exchange",
+            reason: notes || "استبدال منتج",
+            transferred_to_warehouse: false, // ❌ مترحلش للمخزن
+            warehouse_updated: false, // ❌ المخزن ميتحدثش
+            branch_updated: true,
+        });
 
-        if (reError) throw reError;
-
-        // ====== 5. تسجيل في branch_transfers ======
-        // حركة مرتجع القديم
+        // تسجيل في branch_transfers
         await supabaseClient.from("branch_transfers").insert({
             from_branch_id: branchId,
             to_branch_id: null,
             product_id: oldProductId,
             quantity: quantity,
             transfer_type: "customer_return",
-            notes: notes || "مرتجع استبدال (تم تحديث المخزن)",
+            notes: notes || "مرتجع استبدال (الفرع فقط)",
             created_by: userId,
-            transfer_date: new Date().toISOString()
+            transfer_date: new Date().toISOString(),
         });
 
-        // حركة توريد الجديد
         await supabaseClient.from("branch_transfers").insert({
             from_branch_id: null,
             to_branch_id: branchId,
             product_id: newProductId,
             quantity: quantity,
             transfer_type: "exchange",
-            notes: notes || "توريد استبدال (تم تحديث المخزن)",
+            notes: notes || "توريد استبدال (الفرع فقط)",
             created_by: userId,
-            transfer_date: new Date().toISOString()
+            transfer_date: new Date().toISOString(),
         });
 
-        showMessage(msg,
-            `✅ تم الاستبدال بنجاح\n` +
-            `📦 القديم: ${oldBranchResult.newQuantity} في الفرع, ${warehouseOldResult.newQuantity} في المخزن\n` +
-            `📦 الجديد: ${newBranchResult.newQuantity} في الفرع, ${warehouseNewResult.newQuantity} في المخزن`,
-            "success"
+        showMessage(
+            msg,
+            "✅ تم الاستبدال بنجاح\n" +
+            "📦 القديم في الفرع: " +
+            oldBranchResult.newQuantity +
+            "\n" +
+            "📦 الجديد في الفرع: " +
+            newBranchResult.newQuantity,
+            "success",
         );
 
         setTimeout(function() {
@@ -1258,16 +1385,11 @@ async function executeExchange() {
             }
             loadTransfers();
         }, 1500);
-
     } catch (error) {
-        console.error("❌ Error in exchange:", error);
+        console.error("❌ Error:", error);
         showMessage(msg, "❌ فشل الاستبدال: " + error.message, "danger");
     }
 }
-
-// ============================================================
-// دوال مساعدة
-// ============================================================
 
 function showMessage(element, message, type) {
     element.textContent = message;
