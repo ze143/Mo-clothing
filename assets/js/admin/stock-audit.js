@@ -23,161 +23,111 @@ document.addEventListener("DOMContentLoaded", async function() {
     }
 });
 
+// =============================================
+// تدقيق المخزون - نسخة مُصلحة (تعتمد على الجرد)
+// =============================================
+
 async function loadAudit() {
     try {
         const container = document.getElementById("auditResults");
 
-        // جلب البيانات
-        const branches = await supabaseClient.from("branches").select("*");
-        const products = await supabaseClient.from("products").select("*");
-        const transfers = await supabaseClient.from("branch_transfers").select("*");
-        const sales = await supabaseClient.from("daily_sales").select("*");
-        const stock = await supabaseClient.from("branch_stock").select("*");
+        // 1️⃣ جلب كل الفروع
+        const { data: branches, error: bError } = await supabaseClient
+            .from("branches")
+            .select("*")
+            .neq("name", "تجريبي");
 
-        if (branches.error) throw branches.error;
-        if (products.error) throw products.error;
-        if (transfers.error) throw transfers.error;
-        if (sales.error) throw sales.error;
-        if (stock.error) throw stock.error;
+        if (bError) throw bError;
 
-        // حساب الفروقات
-        let auditData = [];
+        // 2️⃣ جلب كل المنتجات
+        const { data: products, error: pError } = await supabaseClient
+            .from("products")
+            .select("*");
+
+        if (pError) throw pError;
+
+        // 3️⃣ جلب آخر جرد لكل فرع
+        const { data: audits, error: aError } = await supabaseClient
+            .from("inventory_audit")
+            .select("*")
+            .order("created_at", { ascending: false });
+
+        if (aError) throw aError;
+
+        // 4️⃣ جلب عناصر الجرد
+        const { data: auditItems, error: aiError } = await supabaseClient
+            .from("inventory_audit_items")
+            .select("*");
+
+        if (aiError) throw aiError;
+
+        // 5️⃣ جلب المخزون الفعلي
+        const { data: stock, error: sError } = await supabaseClient
+            .from("branch_stock")
+            .select("*");
+
+        if (sError) throw sError;
+
+        // 6️⃣ حساب الفروقات بناءً على الجرد
+        let results = [];
         let totalErrors = 0;
         let totalMissing = 0;
         let totalExtra = 0;
 
-        for (const branch of branches.data) {
-            for (const product of products.data) {
-                // 1. إجمالي التوريدات (تزيد المخزون)
-                const totalSupplied = transfers.data
-                    .filter(
-                        (t) =>
-                        t.to_branch_id === branch.id &&
-                        t.product_id === product.id &&
-                        t.transfer_type === "supply",
-                    )
-                    .reduce((sum, t) => sum + t.quantity, 0);
+        for (const branch of branches) {
+            // جلب آخر جرد للفرع
+            const lastAudit = audits.find((a) => a.branch_id === branch.id);
 
-                // 2. إجمالي المبيعات المقفلة (تقل المخزون)
-                const totalSold = sales.data
-                    .filter(
-                        (s) =>
-                        s.branch_id === branch.id &&
-                        s.product_id === product.id &&
-                        s.is_closed === true,
-                    )
-                    .reduce((sum, s) => sum + s.quantity, 0);
+            for (const product of products) {
+                // المخزون الفعلي
+                const stockItem = stock.find(
+                    (s) => s.branch_id === branch.id && s.product_id === product.id,
+                );
+                const actualQty = (stockItem && stockItem.quantity) || 0;
 
-                // 3. إجمالي المرتجعات للمخزن (تقل المخزون)
-                const totalReturned = transfers.data
-                    .filter(
-                        (t) =>
-                        t.from_branch_id === branch.id &&
-                        t.product_id === product.id &&
-                        t.transfer_type === "return",
-                    )
-                    .reduce((sum, t) => sum + t.quantity, 0);
+                // المخزون من الجرد
+                let auditQty = 0;
+                if (lastAudit) {
+                    const auditItem = auditItems.find(
+                        (a) => a.audit_id === lastAudit.id && a.product_id === product.id,
+                    );
+                    auditQty = (auditItem && auditItem.actual_quantity) || 0;
+                }
 
-                // 4. إجمالي التحويلات من الفرع (تقل المخزون)
-                const totalTransferredOut = transfers.data
-                    .filter(
-                        (t) =>
-                        t.from_branch_id === branch.id &&
-                        t.product_id === product.id &&
-                        t.transfer_type === "transfer",
-                    )
-                    .reduce((sum, t) => sum + t.quantity, 0);
+                // ✅ الفرق = الفعلي - الجرد
+                const variance = actualQty - auditQty;
 
-                // 5. إجمالي التحويلات إلى الفرع (تزيد المخزون)
-                const totalTransferredIn = transfers.data
-                    .filter(
-                        (t) =>
-                        t.to_branch_id === branch.id &&
-                        t.product_id === product.id &&
-                        t.transfer_type === "transfer",
-                    )
-                    .reduce((sum, t) => sum + t.quantity, 0);
+                if (variance !== 0 || actualQty > 0 || auditQty > 0) {
+                    const isError = variance !== 0;
+                    let statusText = "✅ مضبوط";
 
-                // ✅ إجمالي مرتجعات العملاء (تزيد المخزون في الفرع)
-                const totalCustomerReturn = transfers.data
-                    .filter(
-                        (t) =>
-                        t.to_branch_id === branch.id &&
-                        t.product_id === product.id &&
-                        t.transfer_type === "customer_return",
-                    )
-                    .reduce((sum, t) => sum + t.quantity, 0);
+                    if (variance > 0) {
+                        statusText = "⚠️ زائد";
+                        totalErrors++;
+                        totalExtra += variance;
+                    } else if (variance < 0) {
+                        statusText = "❌ ناقص";
+                        totalErrors++;
+                        totalMissing += Math.abs(variance);
+                    }
 
-                // ✅ إجمالي الاستبدالات (تزيد المخزون في الفرع)
-                const totalExchange = transfers.data
-                    .filter(
-                        (t) =>
-                        t.to_branch_id === branch.id &&
-                        t.product_id === product.id &&
-                        t.transfer_type === "exchange",
-                    )
-                    .reduce((sum, t) => sum + t.quantity, 0);
-
-                // ✅ المخزون الفعلي
-                const actualStock = stock.data
-                    .filter(
-                        (s) => s.branch_id === branch.id && s.product_id === product.id,
-                    )
-                    .reduce((sum, s) => sum + s.quantity, 0);
-
-                // 9. المخزون المتوقع (مع كل العمليات)
-                const expectedStock =
-                    totalSupplied -
-                    totalSold -
-                    totalReturned -
-                    totalTransferredOut +
-                    totalTransferredIn +
-                    totalCustomerReturn +
-                    totalExchange;
-                const difference = expectedStock - actualStock;
-
-                if (
-                    totalSupplied > 0 ||
-                    totalSold > 0 ||
-                    totalReturned > 0 ||
-                    totalTransferredOut > 0 ||
-                    totalTransferredIn > 0 ||
-                    totalCustomerReturn > 0 ||
-                    totalExchange > 0 ||
-                    actualStock > 0
-                ) {
-                    auditData.push({
+                    results.push({
                         branch: branch.name,
                         product: product.name,
-                        supplied: totalSupplied,
-                        sold: totalSold,
-                        returned: totalReturned,
-                        transferredOut: totalTransferredOut,
-                        transferredIn: totalTransferredIn,
-                        customerReturn: totalCustomerReturn,
-                        exchange: totalExchange,
-                        expected: expectedStock,
-                        actual: actualStock,
-                        difference: difference,
-                        status: difference === 0 ?
-                            "مضبوط ✅" : difference > 0 ?
-                            "ناقص ❌" : "زائد ⚠️",
-                        isError: difference !== 0,
+                        auditQty: auditQty, // من الجرد
+                        actualQty: actualQty, // من branch_stock
+                        variance: variance,
+                        status: statusText,
+                        isError: isError,
                     });
-
-                    if (difference !== 0) {
-                        totalErrors++;
-                        if (difference > 0) totalMissing += difference;
-                        else totalExtra += Math.abs(difference);
-                    }
                 }
             }
         }
 
-        // عرض النتيجة
+        // عرض النتائج
         let html = "";
 
-        if (auditData.length === 0) {
+        if (results.length === 0) {
             html = `
                 <div class="alert alert-success text-center py-5">
                     <i class="fas fa-check-circle fa-3x mb-3 d-block" style="color: #27ae60;"></i>
@@ -189,7 +139,7 @@ async function loadAudit() {
             html = `
                 <div class="row g-4 mb-4">
                     <div class="col-md-4">
-                        <div class="stats-card danger">
+                        <div class="stats-card ${totalErrors > 0 ? "danger" : "success"}">
                             <div class="stats-number">${totalErrors}</div>
                             <div class="stats-label">عدد المنتجات بها مشكلة</div>
                         </div>
@@ -213,36 +163,23 @@ async function loadAudit() {
                             <tr>
                                 <th>الفرع</th>
                                 <th>المنتج</th>
-                                <th>المورد</th>
-                                <th>المباع</th>
-                                <th>المرتجع</th>
-                                <th>تحويل خارج</th>
-                                <th>تحويل داخل</th>
-                                <th>مرتجع عميل</th>
-                                <th>استبدال</th>
-                                <th>المتوقع</th>
+                                <th>من الجرد</th>
                                 <th>الفعلي</th>
                                 <th>الفرق</th>
                                 <th>الحالة</th>
                             </tr>
-                        </thead>
+                        </thead>const expectedStock =
+
                         <tbody>
-                            ${auditData
+                            ${results
                               .map(
                                 (item) => `
                                 <tr class="${item.isError ? "table-danger" : ""}">
                                     <td>${item.branch}</td>
                                     <td>${item.product}</td>
-                                    <td>${item.supplied}</td>
-                                    <td>${item.sold}</td>
-                                    <td>${item.returned}</td>
-                                    <td>${item.transferredOut}</td>
-                                    <td>${item.transferredIn}</td>
-                                    <td>${item.customerReturn}</td>
-                                    <td>${item.exchange}</td>
-                                    <td>${item.expected}</td>
-                                    <td>${item.actual}</td>
-                                    <td><strong>${item.difference}</strong></td>
+                                    <td>${item.auditQty}</td>
+                                    <td>${item.actualQty}</td>
+                                    <td><strong>${item.variance}</strong></td>
                                     <td>${item.status}</td>
                                 </tr>
                             `,
@@ -271,58 +208,57 @@ async function loadAudit() {
 // ============================================================
 
 async function recalculateStockAfterAudit(auditId) {
-    try {
-        // 1. جلب عناصر الجرد
-        const { data: items, error } = await supabaseClient
-            .from("inventory_audit_items")
-            .select("*")
-            .eq("audit_id", auditId);
+  try {
+    // 1. جلب عناصر الجرد
+    const { data: items, error } = await supabaseClient
+      .from("inventory_audit_items")
+      .select("*")
+      .eq("audit_id", auditId);
 
-        if (error) throw error;
+    if (error) throw error;
 
-        let updates = [];
-        for (const item of items) {
-            if (item.difference !== 0) {
-                // 2. تحديث مخزون الفرع
-                const branchResult = await updateBranchStock(
-                    item.branch_id,
-                    item.product_id,
-                    item.difference
-                );
-                
-                // 3. ✅ تحديث المخزن الرئيسي (عكسياً)
-                // لو الفرق موجب (زيادة في الفرع) => نقص من المخزن
-                // لو الفرق سالب (نقص في الفرع) => زيادة في المخزن
-                const warehouseChange = -item.difference;
-                const warehouseResult = await updateWarehouseStock(
-                    item.product_id,
-                    warehouseChange
-                );
-                
-                updates.push({
-                    product_id: item.product_id,
-                    branch_id: item.branch_id,
-                    branch_change: item.difference,
-                    warehouse_change: warehouseChange,
-                    branch_new: branchResult.newQuantity,
-                    warehouse_new: warehouseResult.newQuantity
-                });
-            }
-        }
+    let updates = [];
+    for (const item of items) {
+      if (item.difference !== 0) {
+        // 2. تحديث مخزون الفرع
+        const branchResult = await updateBranchStock(
+          item.branch_id,
+          item.product_id,
+          item.difference,
+        );
 
-        return {
-            success: true,
-            updates: updates,
-            message: `✅ تم تحديث ${updates.length} منتج`
-        };
+        // 3. ✅ تحديث المخزن الرئيسي (عكسياً)
+        // لو الفرق موجب (زيادة في الفرع) => نقص من المخزن
+        // لو الفرق سالب (نقص في الفرع) => زيادة في المخزن
+        const warehouseChange = -item.difference;
+        const warehouseResult = await updateWarehouseStock(
+          item.product_id,
+          warehouseChange,
+        );
 
-    } catch (error) {
-        console.error("❌ خطأ في إعادة حساب المخزون:", error);
-        return {
-            success: false,
-            error: error.message
-        };
+        updates.push({
+          product_id: item.product_id,
+          branch_id: item.branch_id,
+          branch_change: item.difference,
+          warehouse_change: warehouseChange,
+          branch_new: branchResult.newQuantity,
+          warehouse_new: warehouseResult.newQuantity,
+        });
+      }
     }
+
+    return {
+      success: true,
+      updates: updates,
+      message: `✅ تم تحديث ${updates.length} منتج`,
+    };
+  } catch (error) {
+    console.error("❌ خطأ في إعادة حساب المخزون:", error);
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
 }
 
 // تصدير الدالة
