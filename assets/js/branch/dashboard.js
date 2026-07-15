@@ -1,3 +1,23 @@
+// ============================================================
+// 📦 جلب الكمية المتاحة في الفرع
+// ============================================================
+
+async function getAvailableStock(productId) {
+    try {
+        var { data, error } = await supabaseClient
+            .from("branch_stock")
+            .select("quantity")
+            .eq("branch_id", currentBranchId)
+            .eq("product_id", productId)
+            .maybeSingle();
+
+        if (error) throw error;
+        return (data && data.quantity) || 0;
+    } catch (error) {
+        console.error("❌ خطأ في جلب الكمية المتاحة:", error);
+        return 0;
+    }
+}
 // =============================================
 // لوحة الفرع - نسخة نهائية
 // =============================================
@@ -158,8 +178,28 @@ async function handleAddSale(e) {
         return;
     }
 
+    // ✅ التحقق من الكمية المتاحة
+    var available = await getAvailableStock(productId);
+
+    if (available === 0) {
+        showSalesMessage("❌ هذا المنتج غير متوفر في الفرع حالياً", "danger");
+        return;
+    }
+
+    if (quantity > available) {
+        showSalesMessage(
+            "❌ الكمية المطلوبة (" +
+            quantity +
+            ") أكبر من المتاحة (" +
+            available +
+            ")",
+            "danger",
+        );
+        return;
+    }
+
     try {
-        // ✅ إضافة المبيعات فقط (من غير خصم المخزون)
+        // ✅ إضافة المبيعات
         const { data, error } = await supabaseClient
             .from("daily_sales")
             .insert({
@@ -172,6 +212,17 @@ async function handleAddSale(e) {
             .select();
 
         if (error) throw error;
+
+        // ✅ خصم المخزون فوراً
+        var newQty = available - quantity;
+        await supabaseClient
+            .from("branch_stock")
+            .update({
+                quantity: newQty,
+                updated_at: new Date().toISOString(),
+            })
+            .eq("branch_id", currentBranchId)
+            .eq("product_id", productId);
 
         await loadTodaySales();
         await updateStatistics();
@@ -190,7 +241,16 @@ async function deleteSale(saleId) {
     if (!confirm("هل أنت متأكد من حذف هذه المبيعات؟")) return;
 
     try {
-        // ✅ حذف المبيعات فقط (من غير تعديل المخزون)
+        // جلب بيانات المبيعات قبل الحذف
+        const { data: saleData, error: fetchError } = await supabaseClient
+            .from("daily_sales")
+            .select("product_id, quantity")
+            .eq("id", saleId)
+            .single();
+
+        if (fetchError) throw fetchError;
+
+        // حذف المبيعات
         const { error: deleteError } = await supabaseClient
             .from("daily_sales")
             .delete()
@@ -198,10 +258,25 @@ async function deleteSale(saleId) {
 
         if (deleteError) throw deleteError;
 
+        // ✅ إرجاع الكمية للمخزون
+        if (saleData) {
+            var available = await getAvailableStock(saleData.product_id);
+            var newQty = available + saleData.quantity;
+
+            await supabaseClient
+                .from("branch_stock")
+                .update({
+                    quantity: newQty,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("branch_id", currentBranchId)
+                .eq("product_id", saleData.product_id);
+        }
+
         await loadTodaySales();
         await updateStatistics();
 
-        showSalesMessage("✅ تم حذف المبيعات بنجاح", "success");
+        showSalesMessage("✅ تم حذف المبيعات وإرجاع الكمية للمخزون", "success");
     } catch (error) {
         console.error("Error deleting sale:", error);
         showSalesMessage("❌ فشل حذف المبيعات", "danger");
@@ -240,3 +315,4 @@ window.addEventListener("storage", function(e) {
 
 // جعل deleteSale متاحاً في النطاق العام
 window.deleteSale = deleteSale;
+window.getAvailableStock = getAvailableStock;
