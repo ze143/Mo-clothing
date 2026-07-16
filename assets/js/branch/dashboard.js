@@ -221,7 +221,7 @@ async function handleAddSale(e) {
         product_id: productId,
         quantity: quantity,
         sale_date: todayDate,
-        is_closed: true,
+        is_closed: false,
         // closed_at: new Date().toISOString()  // ❌ شيله
       })
       .select();
@@ -243,7 +243,7 @@ async function handleAddSale(e) {
     await updateStatistics();
     document.getElementById("dailySalesForm").reset();
 
-    showSalesMessage("✅ تم إضافة المبيعات وتقفيلها بنجاح", "success");
+    showSalesMessage("✅ تم إضافة المبيعات ", "success");
   } catch (error) {
     console.error("Error adding sale:", error);
     showSalesMessage("❌ فشل إضافة المبيعات: " + error.message, "danger");
