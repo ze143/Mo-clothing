@@ -213,7 +213,7 @@ async function handleAddSale(e) {
   }
 
   try {
-    // ✅ إضافة المبيعات مع إقفال فوري
+    // ✅ الجديد (من غير closed_at)
     const { data, error } = await supabaseClient
       .from("daily_sales")
       .insert({
@@ -221,8 +221,8 @@ async function handleAddSale(e) {
         product_id: productId,
         quantity: quantity,
         sale_date: todayDate,
-        is_closed: true, // ✅ تقفل فوراً
-        closed_at: new Date().toISOString(),
+        is_closed: true,
+        // closed_at: new Date().toISOString()  // ❌ شيله
       })
       .select();
 
