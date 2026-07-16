@@ -228,6 +228,17 @@ async function handleAddSale(e) {
 
     if (error) throw error;
 
+    // ✅ خصم المخزون
+    var newQty = available - quantity;
+    await supabaseClient
+      .from("branch_stock")
+      .update({
+        quantity: newQty,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("branch_id", currentBranchId)
+      .eq("product_id", productId);
+
     await loadTodaySales();
     await updateStatistics();
     document.getElementById("dailySalesForm").reset();
