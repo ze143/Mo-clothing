@@ -254,7 +254,6 @@ async function closeDayWithStatus(status = "completed") {
 }
 
 async function closeDayAndRefresh() {
-  await closeDay();
 
   // ✅ تحديث جميع الصفحات المفتوحة
   // إرسال رسالة للتحديث
