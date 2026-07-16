@@ -171,7 +171,7 @@ async function handleAddSale(e) {
   e.preventDefault();
   e.stopPropagation();
 
-  // ✅ منع الدبل كليك
+  // منع الدبل كليك
   if (isSubmitting) {
     showSalesMessage("⚠️ يتم معالجة الطلب، انتظر قليلاً", "warning");
     return;
@@ -185,6 +185,7 @@ async function handleAddSale(e) {
     return;
   }
 
+  // ✅ التحقق من الكمية (منع البيع لو مفيش ستوك)
   var available = await getAvailableStock(productId);
 
   if (available === 0) {
@@ -204,7 +205,6 @@ async function handleAddSale(e) {
     return;
   }
 
-  // ✅ قفل الزر
   isSubmitting = true;
   var btn = document.querySelector('#dailySalesForm button[type="submit"]');
   if (btn) {
@@ -213,7 +213,7 @@ async function handleAddSale(e) {
   }
 
   try {
-    // ✅ الجديد (من غير closed_at)
+    // ✅ إضافة المبيعات فقط (من غير خصم)
     const { data, error } = await supabaseClient
       .from("daily_sales")
       .insert({
@@ -222,33 +222,27 @@ async function handleAddSale(e) {
         quantity: quantity,
         sale_date: todayDate,
         is_closed: false,
-        // closed_at: new Date().toISOString()  // ❌ شيله
       })
       .select();
 
     if (error) throw error;
 
-    // ✅ خصم المخزون
-    var newQty = available - quantity;
-    await supabaseClient
-      .from("branch_stock")
-      .update({
-        quantity: newQty,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("branch_id", currentBranchId)
-      .eq("product_id", productId);
+    // ❌ شيل الخصم من هنا
+    // var newQty = available - quantity;
+    // await supabaseClient.from("branch_stock").update(...)
 
     await loadTodaySales();
     await updateStatistics();
     document.getElementById("dailySalesForm").reset();
 
-    showSalesMessage("✅ تم إضافة المبيعات ", "success");
+    showSalesMessage(
+      "✅ تم إضافة المبيعات (في انتظار إقفال الأدمن)",
+      "success",
+    );
   } catch (error) {
     console.error("Error adding sale:", error);
     showSalesMessage("❌ فشل إضافة المبيعات: " + error.message, "danger");
   } finally {
-    // ✅ فتح الزر
     isSubmitting = false;
     if (btn) {
       btn.disabled = false;

@@ -153,13 +153,16 @@ async function loadBranchClosingData() {
 // دوال إقفال اليوم
 // =============================================
 async function closeDayWithStatus(status = "completed") {
-  // ✅ 1. اتأكد من currentBranchId
+  // ✅ 1. خد الـ ID من الـ select
   currentBranchId = document.getElementById("closeBranch").value;
 
   if (!currentBranchId) {
     alert("⚠️ يرجى اختيار فرع أولاً");
     return;
   }
+
+  console.log("🔍 Branch ID:", currentBranchId);
+  console.log("🔍 Today:", todayDate);
 
   if (!confirm(`✅ هل أنت متأكد من إقفال اليوم للفرع المحدد؟`)) {
     return;
@@ -176,21 +179,15 @@ async function closeDayWithStatus(status = "completed") {
 
     if (salesError) throw salesError;
 
+    console.log("📋 عدد المبيعات:", salesData ? salesData.length : 0);
+
     // ✅ 3. لو مفيش مبيعات
     if (!salesData || salesData.length === 0) {
       alert("ℹ️ لا توجد مبيعات غير مقفلة لإقفالها");
       return;
     }
 
-    console.log("📋 عدد المبيعات:", salesData.length);
-
-    // ✅ 4. حساب الإجماليات
-    let totalItems = 0;
-    salesData.forEach((sale) => {
-      totalItems += sale.quantity;
-    });
-
-    // ✅ 5. خصم المخزون
+    // ✅ 4. خصم المخزون
     for (var i = 0; i < salesData.length; i++) {
       var sale = salesData[i];
 
@@ -221,7 +218,7 @@ async function closeDayWithStatus(status = "completed") {
       console.log(`✅ خصم: ${sale.product_id} (${sale.quantity} قطعة)`);
     }
 
-    // ✅ 6. تحديث المبيعات
+    // ✅ 5. تحديث المبيعات
     const { error: updateError } = await supabaseClient
       .from("daily_sales")
       .update({
@@ -234,22 +231,24 @@ async function closeDayWithStatus(status = "completed") {
 
     if (updateError) throw updateError;
 
-    // ✅ 7. حفظ تقرير الإقفال
+    // ✅ 6. حفظ تقرير الإقفال
     const { data: userData } = await supabaseClient.auth.getUser();
     var userId = (userData && userData.user && userData.user.id) || null;
 
     await supabaseClient.from("day_closing").insert({
       branch_id: currentBranchId,
       closing_date: todayDate,
-      total_items_sold: totalItems,
+      total_items_sold: salesData.reduce(function (sum, sale) {
+        return sum + sale.quantity;
+      }, 0),
       closed_by: userId,
       status: status,
       notes: "إقفال يومي - " + status,
     });
 
-    // ✅ 8. تحديث الصفحة
+    // ✅ 7. تحديث الصفحة
     localStorage.setItem("stockUpdated", Date.now());
-    showSuccess(`✅ تم إقفال اليوم وخصم ${totalItems} قطعة بنجاح`);
+    showSuccess(`✅ تم إقفال اليوم وخصم المخزون بنجاح`);
     await loadBranchClosingData();
   } catch (error) {
     console.error("❌ Error closing day:", error);
@@ -258,14 +257,33 @@ async function closeDayWithStatus(status = "completed") {
 }
 
 async function closeDayAndRefresh() {
-  // ✅ تحديث جميع الصفحات المفتوحة
-  // إرسال رسالة للتحديث
-  localStorage.setItem("stockUpdated", Date.now());
+  // ✅ خد الـ ID من الـ select
+  currentBranchId = document.getElementById("closeBranch").value;
 
-  // تحديث الصفحة الحالية
+  if (!currentBranchId) {
+    alert("⚠️ يرجى اختيار فرع أولاً");
+    return;
+  }
+
+  // ✅ اتأكد إن فيه مبيعات
+  const { data: salesData } = await supabaseClient
+    .from("daily_sales")
+    .select("id")
+    .eq("branch_id", currentBranchId)
+    .eq("sale_date", todayDate)
+    .eq("is_closed", false);
+
+  if (!salesData || salesData.length === 0) {
+    alert("ℹ️ لا توجد مبيعات غير مقفلة لإقفالها");
+    return;
+  }
+
+  // ✅ استخدم closeDayWithStatus مباشرة
+  await closeDayWithStatus("completed");
+
+  localStorage.setItem("stockUpdated", Date.now());
   location.reload();
 }
 
 // جعل الدوال متاحة
-window.closeDay = closeDayWithStatus;
 window.loadBranchClosingData = loadBranchClosingData;
