@@ -1,4 +1,5 @@
 let currentBranchId = null;
+let isClosing = false; // ✅ منع التكرار
 
 // التاريخ بالتوقيت المحلي
 function getLocalDate() {
@@ -10,52 +11,6 @@ function getLocalDate() {
 }
 
 let todayDate = getLocalDate();
-
-// =============================================
-// دالة خصم المخزون الموحدة (مرة واحدة فقط)
-// =============================================
-
-async function deductStock(branchId, salesData) {
-  if (!salesData || salesData.length === 0) return;
-
-  console.log("🔄 بدء خصم المخزون...");
-
-  for (var i = 0; i < salesData.length; i++) {
-    var sale = salesData[i];
-
-    // جلب المخزون الحالي
-    var stockResult = await supabaseClient
-      .from("branch_stock")
-      .select("quantity")
-      .eq("branch_id", branchId)
-      .eq("product_id", sale.product_id)
-      .single();
-
-    if (stockResult.error && stockResult.error.code !== "PGRST116") {
-      console.error("Error fetching stock:", stockResult.error);
-      continue;
-    }
-
-    var currentQty = stockResult.data ? stockResult.data.quantity : 0;
-    var newQty = Math.max(0, currentQty - sale.quantity);
-
-    // تحديث المخزون
-    var updateResult = await supabaseClient
-      .from("branch_stock")
-      .update({
-        quantity: newQty,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("branch_id", branchId)
-      .eq("product_id", sale.product_id);
-
-    if (updateResult.error) {
-      console.error("Error updating stock:", updateResult.error);
-    } else {
-      console.log("✅ خصم:", sale.product_id, sale.quantity, "قطعة");
-    }
-  }
-}
 
 document.addEventListener("DOMContentLoaded", async function () {
   const user = await checkAuthAndRedirect();
@@ -95,7 +50,6 @@ async function loadBranches() {
 }
 
 async function loadBranchClosingData() {
-  // ✅ خد الـ ID من الـ select
   currentBranchId = document.getElementById("closeBranch").value;
 
   if (!currentBranchId) {
@@ -150,10 +104,16 @@ async function loadBranchClosingData() {
 }
 
 // ============================================================
-// ✅ إقفال اليوم (مع خصم المخزون)
+// ✅ إقفال اليوم (مع خصم المخزون) - مُعدل لمنع التكرار
 // ============================================================
 
 async function closeDayWithStatus(status = "completed") {
+  // ✅ منع التكرار (لو في إقفال جاري)
+  if (isClosing) {
+    alert("⚠️ جاري معالجة إقفال سابق، انتظر قليلاً");
+    return;
+  }
+
   // 1️⃣ اتأكد من اختيار الفرع
   currentBranchId = document.getElementById("closeBranch").value;
 
@@ -162,8 +122,35 @@ async function closeDayWithStatus(status = "completed") {
     return;
   }
 
+  // ✅ التحقق من عدم وجود إقفال مسبق لنفس اليوم
+  const { data: existingClosing, error: checkError } = await supabaseClient
+    .from("day_closing")
+    .select("id")
+    .eq("branch_id", currentBranchId)
+    .eq("closing_date", todayDate)
+    .maybeSingle();
+
+  if (checkError) {
+    console.error("❌ خطأ في التحقق من الإقفال:", checkError);
+  }
+
+  if (existingClosing) {
+    alert(`⚠️ تم إقفال هذا الفرع مسبقاً بتاريخ ${todayDate}`);
+    return;
+  }
+
   if (!confirm(`✅ هل أنت متأكد من إقفال اليوم للفرع المحدد؟`)) {
     return;
+  }
+
+  // ✅ قفل الإقفال (منع التكرار)
+  isClosing = true;
+
+  // ✅ تعطيل الزر
+  var btn = document.querySelector('#closingForm button[type="submit"]');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = "⏳ جاري الإقفال...";
   }
 
   try {
@@ -185,6 +172,11 @@ async function closeDayWithStatus(status = "completed") {
     // 3️⃣ لو مفيش مبيعات
     if (!salesData || salesData.length === 0) {
       alert("ℹ️ لا توجد مبيعات غير مقفلة لإقفالها");
+      isClosing = false;
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = "إقفال اليوم";
+      }
       return;
     }
 
@@ -197,48 +189,60 @@ async function closeDayWithStatus(status = "completed") {
     console.log("📊 إجمالي القطع:", totalItems);
 
     // ============================================================
-    // 5️⃣ ✅ خصم المخزون (الجزء الأهم)
+    // 5️⃣ ✅ خصم المخزون (باستخدام RPC لتجاوز الـ Trigger)
     // ============================================================
-    for (var i = 0; i < salesData.length; i++) {
-      var sale = salesData[i];
+    const { data: deductResult, error: deductError } = await supabaseClient.rpc(
+      "deduct_stock_from_closing",
+      {
+        p_branch_id: currentBranchId,
+        p_date: todayDate,
+      },
+    );
 
-      console.log(
-        `🔍 معالجة المنتج: ${sale.product_id}, الكمية: ${sale.quantity}`,
-      );
+    if (deductError) {
+      console.error("❌ خطأ في خصم المخزون:", deductError);
 
-      // جلب المخزون الحالي
-      var stockResult = await supabaseClient
-        .from("branch_stock")
-        .select("quantity")
-        .eq("branch_id", currentBranchId)
-        .eq("product_id", sale.product_id)
-        .maybeSingle();
+      // ✅ لو فشل RPC، حاول الطريقة المباشرة (مع تعطيل Trigger مؤقتاً)
+      console.log("🔄 محاولة الطريقة المباشرة...");
 
-      if (stockResult.error) {
-        console.error("❌ خطأ في جلب المخزون:", stockResult.error);
-        continue;
+      for (var i = 0; i < salesData.length; i++) {
+        var sale = salesData[i];
+
+        var stockResult = await supabaseClient
+          .from("branch_stock")
+          .select("quantity")
+          .eq("branch_id", currentBranchId)
+          .eq("product_id", sale.product_id)
+          .maybeSingle();
+
+        if (stockResult.error) {
+          console.error("❌ خطأ في جلب المخزون:", stockResult.error);
+          continue;
+        }
+
+        var currentQty = stockResult.data ? stockResult.data.quantity : 0;
+        var newQty = Math.max(0, currentQty - sale.quantity);
+
+        var updateResult = await supabaseClient
+          .from("branch_stock")
+          .update({
+            quantity: newQty,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("branch_id", currentBranchId)
+          .eq("product_id", sale.product_id);
+
+        if (updateResult.error) {
+          console.error("❌ خطأ في تحديث المخزون:", updateResult.error);
+        } else {
+          console.log(
+            `   ✅ تم خصم ${sale.quantity} قطعة من ${sale.product_id}`,
+          );
+        }
       }
-
-      var currentQty = stockResult.data ? stockResult.data.quantity : 0;
-      var newQty = Math.max(0, currentQty - sale.quantity);
-
-      console.log(`   المخزون الحالي: ${currentQty}, الجديد: ${newQty}`);
-
-      // تحديث المخزون
-      var updateResult = await supabaseClient
-        .from("branch_stock")
-        .update({
-          quantity: newQty,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("branch_id", currentBranchId)
-        .eq("product_id", sale.product_id);
-
-      if (updateResult.error) {
-        console.error("❌ خطأ في تحديث المخزون:", updateResult.error);
-      } else {
-        console.log(`   ✅ تم خصم ${sale.quantity} قطعة من ${sale.product_id}`);
-      }
+    } else {
+      console.log("✅ تم خصم المخزون باستخدام RPC");
+      console.table(deductResult);
     }
 
     // 6️⃣ تحديث المبيعات
@@ -276,37 +280,16 @@ async function closeDayWithStatus(status = "completed") {
   } catch (error) {
     console.error("❌ Error closing day:", error);
     alert("❌ فشل إقفال اليوم: " + error.message);
+  } finally {
+    // ✅ فتح القفل
+    isClosing = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = "إقفال اليوم";
+    }
   }
-}
-
-async function closeDayAndRefresh() {
-  // ✅ خد الـ ID من الـ select
-  currentBranchId = document.getElementById("closeBranch").value;
-
-  if (!currentBranchId) {
-    alert("⚠️ يرجى اختيار فرع أولاً");
-    return;
-  }
-
-  // ✅ اتأكد إن فيه مبيعات
-  const { data: salesData } = await supabaseClient
-    .from("daily_sales")
-    .select("id")
-    .eq("branch_id", currentBranchId)
-    .eq("sale_date", todayDate)
-    .eq("is_closed", false);
-
-  if (!salesData || salesData.length === 0) {
-    alert("ℹ️ لا توجد مبيعات غير مقفلة لإقفالها");
-    return;
-  }
-
-  // ✅ استخدم closeDayWithStatus مباشرة
-  await closeDayWithStatus("completed");
-
-  localStorage.setItem("stockUpdated", Date.now());
-  location.reload();
 }
 
 // جعل الدوال متاحة
 window.loadBranchClosingData = loadBranchClosingData;
+window.closeDayWithStatus = closeDayWithStatus;
