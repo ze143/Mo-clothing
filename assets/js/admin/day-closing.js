@@ -290,6 +290,43 @@ async function closeDayWithStatus(status = "completed") {
   }
 }
 
-// جعل الدوال متاحة
+// ============================================================
+// ✅ إقفال اليوم وتحديث الصفحة
+// ============================================================
+
+async function closeDayAndRefresh() {
+    console.log("🔄 بدء إقفال اليوم وتحديث الصفحة...");
+    
+    // ✅ خد الـ ID من الـ select
+    currentBranchId = document.getElementById("closeBranch").value;
+
+    if (!currentBranchId) {
+        alert("⚠️ يرجى اختيار فرع أولاً");
+        return;
+    }
+
+    // ✅ اتأكد إن فيه مبيعات
+    const { data: salesData } = await supabaseClient
+        .from("daily_sales")
+        .select("id")
+        .eq("branch_id", currentBranchId)
+        .eq("sale_date", todayDate)
+        .eq("is_closed", false);
+
+    if (!salesData || salesData.length === 0) {
+        alert("ℹ️ لا توجد مبيعات غير مقفلة لإقفالها");
+        return;
+    }
+
+    // ✅ استخدم closeDayWithStatus
+    await closeDayWithStatus("completed");
+
+    // ✅ تحديث الصفحة بعد الإقفال
+    localStorage.setItem("stockUpdated", Date.now());
+    location.reload();
+}
+
+// ✅ تصدير الدوال للنطاق العام
+window.closeDayAndRefresh = closeDayAndRefresh;
 window.loadBranchClosingData = loadBranchClosingData;
 window.closeDayWithStatus = closeDayWithStatus;
